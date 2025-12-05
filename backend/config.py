@@ -48,6 +48,18 @@ STADIUM_MODELS = {
         "team": "삼성",
         "coordinates": (35.8411, 128.6815),
     },
+    "suwon": {
+        "path": MODEL_DIR / "kbo_suwon_model.pkl",
+        "name": "수원KT위즈파크",
+        "team": "KT",
+        "coordinates": (37.2997, 127.0097),
+    },
+    "incheon": {
+        "path": MODEL_DIR / "kbo_incheon_model.pkl",
+        "name": "인천SSG랜더스필드",
+        "team": "SSG",
+        "coordinates": (37.4370, 126.6932),
+    },
     # 향후 추가 예정:
     # "sajik": {
     #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_sajik.pkl",
