@@ -10,8 +10,8 @@
           </svg>
         </div>
         <div class="brand-text">
-          <h1 class="title">KBO 우천취소 예측</h1>
-          <p class="subtitle">AI 기반 경기 취소 확률 분석</p>
+          <h1 class="title">KBO Rainout</h1>
+          <p class="subtitle">AI 기반 우천취소 예측 서비스</p>
         </div>
       </div>
       <div class="status-indicator" :class="apiStatusClass">
