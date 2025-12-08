@@ -60,6 +60,12 @@ STADIUM_MODELS = {
         "team": "SSG",
         "coordinates": (37.4370, 126.6932),
     },
+    "daejeon": {
+        "path": MODEL_DIR / "kbo_daejeon_model.pkl",
+        "name": "대전한화생명이글스파크",
+        "team": "한화",
+        "coordinates": (36.3170, 127.4291),
+    },
     # 향후 추가 예정:
     # "sajik": {
     #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_sajik.pkl",
