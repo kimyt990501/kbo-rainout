@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Stadium, ModelInfo } from '@/api/types'
-import { getStadiums, getStadiumModelInfo } from '@/api/client'
+import { getStadiums, getModelInfo } from '@/api/client'
 
 export const useStadiumStore = defineStore('stadium', () => {
   // State
@@ -47,7 +47,7 @@ export const useStadiumStore = defineStore('stadium', () => {
     loading.value = true
     error.value = null
     try {
-      modelInfo.value = await getStadiumModelInfo(currentStadium.value)
+      modelInfo.value = await getModelInfo(currentStadium.value) as ModelInfo
     } catch (e) {
       error.value = '모델 정보를 불러오는데 실패했습니다.'
       console.error('Failed to fetch model info:', e)

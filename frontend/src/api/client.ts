@@ -46,14 +46,6 @@ export async function getModelInfo(stadium?: string): Promise<ModelInfo | AllMod
   }
 }
 
-// 특정 구장 모델 정보 조회
-export async function getStadiumModelInfo(stadium: string): Promise<ModelInfo> {
-  const response = await apiClient.get<ModelInfo>('/api/model-info', {
-    params: { stadium }
-  })
-  return response.data
-}
-
 // 우천취소 예측
 export async function predictRainCancellation(
   payload: PredictionRequest
