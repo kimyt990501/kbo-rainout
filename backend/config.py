@@ -66,6 +66,18 @@ STADIUM_MODELS = {
         "team": "한화",
         "coordinates": (36.3170, 127.4291),
     },
+    "gwangju": {
+        "path": MODEL_DIR / "kbo_gwangju_model.pkl",
+        "name": "광주챔피언스필드",
+        "team": "KIA",
+        "coordinates": (35.1681, 126.8891),
+    },
+    "busan": {
+        "path": MODEL_DIR / "kbo_busan_model.pkl",
+        "name": "사직야구장",
+        "team": "롯데",
+        "coordinates": (35.1940, 129.0616),
+    },
     # 향후 추가 예정:
     # "sajik": {
     #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_sajik.pkl",
