@@ -35,9 +35,9 @@
       <!-- 구장 마커들 -->
       <StadiumMarker
         v-for="stadium in stadiumsWithPosition"
-        :key="stadium.id"
+        :key="stadium.stadiumId"
         v-bind="stadium"
-        :isActive="activeStadium === stadium.id"
+        :isActive="activeStadium === stadium.stadiumId"
         @hover="activeStadium = $event"
         @leave="activeStadium = null"
         @select="handleSelectStadium"

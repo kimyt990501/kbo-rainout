@@ -1,7 +1,7 @@
 <template>
   <div 
     class="stadium-marker"
-    :class="[statusClass, { 'is-active': isActive, 'is-raining': isRaining }]"
+    :class="[statusClass, { 'is-active': isActive, 'is-raining': isRaining, 'tooltip-below': showTooltipBelow }]"
     @mouseenter="$emit('hover', stadiumId)"
     @mouseleave="$emit('leave')"
     @click="$emit('select', stadiumId)"
@@ -21,25 +21,9 @@
     <div class="marker-tooltip" v-show="isActive">
       <div class="tooltip-header">
         <span class="stadium-name">{{ stadiumName }}</span>
-        <span class="team-name">{{ teamName }}</span>
       </div>
       <div class="tooltip-body">
-        <div class="stat-row">
-          <span class="stat-label">취소 가능성</span>
-          <span class="stat-value scoreboard" :class="statusClass">{{ probabilityPercent }}%</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">습도</span>
-          <span class="stat-value">{{ humidity }}%</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">강수량</span>
-          <span class="stat-value">{{ precipitation }}mm</span>
-        </div>
-      </div>
-      <div class="tooltip-footer">
-        <span v-if="aiComment" class="ai-comment">{{ aiComment }}</span>
-        <span v-else class="ai-comment">클릭하여 상세 예측 보기</span>
+        <span class="team-name">{{ teamName }}</span>
       </div>
     </div>
   </div>
@@ -84,6 +68,9 @@ const statusClass = computed(() => {
   if (props.probability >= 0.5) return 'status-warning'
   return 'status-safe'
 })
+
+// 툴팁을 아래쪽에 표시할지 결정 (상단 30%에 있는 마커는 아래쪽에 표시)
+const showTooltipBelow = computed(() => props.y < 30)
 </script>
 
 <style scoped>
@@ -190,13 +177,14 @@ const statusClass = computed(() => {
   left: 50%;
   transform: translateX(-50%);
   width: 200px;
-  background: var(--glass-bg-strong);
+  background: rgba(30, 39, 46, 0.95);
   backdrop-filter: var(--glass-blur-strong);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
   color: var(--white);
   animation: fadeIn var(--transition-fast);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .marker-tooltip::after {
@@ -209,23 +197,30 @@ const statusClass = computed(() => {
   border-top-color: var(--glass-border);
 }
 
+/* 툴팁을 아래쪽에 표시 */
+.stadium-marker.tooltip-below .marker-tooltip {
+  bottom: auto;
+  top: calc(100% + 16px);
+}
+
+.stadium-marker.tooltip-below .marker-tooltip::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--glass-border);
+}
+
 .tooltip-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: var(--space-2);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .stadium-name {
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-}
-
-.team-name {
-  font-size: var(--font-size-xs);
-  opacity: 0.7;
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  display: block;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .tooltip-body {
@@ -234,35 +229,11 @@ const statusClass = computed(() => {
   gap: var(--space-1);
 }
 
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--font-size-xs);
-}
-
-.stat-label {
-  opacity: 0.7;
-}
-
-.stat-value {
-  font-weight: 600;
-}
-
-.stat-value.status-safe { color: var(--grass-green); }
-.stat-value.status-warning { color: var(--clay-brown); }
-.stat-value.status-danger { color: var(--danger-red); }
-
-.tooltip-footer {
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ai-comment {
-  font-size: var(--font-size-xs);
-  font-style: italic;
-  opacity: 0.8;
-  line-height: 1.4;
+.team-name {
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+  color: var(--sky-blue);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes fadeIn {
