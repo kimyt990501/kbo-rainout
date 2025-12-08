@@ -12,6 +12,21 @@
             </svg>
             경기 날짜
           </label>
+
+          <!-- 빠른 날짜 선택 버튼 -->
+          <div class="quick-select-buttons">
+            <button
+              v-for="option in dateQuickOptions"
+              :key="option.value"
+              type="button"
+              class="quick-btn"
+              :class="{ active: isDateActive(option.value) }"
+              @click="selectQuickDate(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+
           <input
             :value="date"
             @input="$emit('update:date', ($event.target as HTMLInputElement).value)"
@@ -29,6 +44,21 @@
             </svg>
             경기 시간
           </label>
+
+          <!-- 빠른 시간 선택 버튼 -->
+          <div class="quick-select-buttons">
+            <button
+              v-for="option in GAME_TIME_OPTIONS"
+              :key="option.value"
+              type="button"
+              class="quick-btn"
+              :class="{ active: hour === option.value }"
+              @click="selectQuickTime(option.value)"
+            >
+              {{ option.label.replace(' (주간)', '').replace(' (조기)', '').replace(' (야간)', '') }}
+            </button>
+          </div>
+
           <select
             :value="hour"
             @change="$emit('update:hour', Number(($event.target as HTMLSelectElement).value))"
@@ -45,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { GAME_TIME_OPTIONS } from '@/constants/gameTime'
 
 interface Props {
@@ -54,12 +85,51 @@ interface Props {
   maxDate: string
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'update:date', value: string): void
   (e: 'update:hour', value: number): void
 }>()
+
+// 빠른 날짜 선택 옵션
+const dateQuickOptions = computed(() => {
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const dayAfter = new Date(today)
+  dayAfter.setDate(dayAfter.getDate() + 2)
+
+  return [
+    {
+      label: '오늘',
+      value: today.toISOString().split('T')[0]
+    },
+    {
+      label: '내일',
+      value: tomorrow.toISOString().split('T')[0]
+    },
+    {
+      label: '모레',
+      value: dayAfter.toISOString().split('T')[0]
+    }
+  ]
+})
+
+// 날짜가 활성화 상태인지 확인
+function isDateActive(dateValue: string): boolean {
+  return props.date === dateValue
+}
+
+// 빠른 날짜 선택
+function selectQuickDate(dateValue: string) {
+  emit('update:date', dateValue)
+}
+
+// 빠른 시간 선택
+function selectQuickTime(timeValue: number) {
+  emit('update:hour', timeValue)
+}
 </script>
 
 <style scoped>
@@ -123,10 +193,54 @@ select.input {
   cursor: pointer;
 }
 
+/* 빠른 선택 버튼 */
+.quick-select-buttons {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.quick-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.quick-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.quick-btn.active {
+  background: var(--grass-green);
+  border-color: var(--grass-green);
+  color: var(--white);
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.3);
+}
+
+.quick-btn:active {
+  transform: scale(0.98);
+}
+
 /* 모바일 최적화 */
 @media (max-width: 640px) {
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .quick-btn {
+    font-size: var(--font-size-2xs);
+    padding: var(--space-1-5) var(--space-2);
   }
 }
 </style>
