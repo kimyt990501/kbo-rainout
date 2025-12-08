@@ -1,7 +1,7 @@
 <template>
   <div class="korea-map-dashboard">
     <div class="map-header">
-      <h2 class="map-title">🗺️ KBO 날씨 상황실</h2>
+      <h2 class="map-title">KBO 날씨 상황실</h2>
       <p class="map-subtitle">전국 구장의 실시간 날씨 상황을 확인하세요</p>
     </div>
 
