@@ -70,7 +70,7 @@ STADIUMS = {
     "daejeon": {
         "id": "daejeon",
         "name": "대전한화생명이글스파크",
-        "search_keyword": "대전",
+        "search_keyword": "한밭",  # KBO 홈페이지에서는 "한밭"으로 표시
         "team": "한화",
         "lat": 36.3170,
         "lon": 127.4291,
