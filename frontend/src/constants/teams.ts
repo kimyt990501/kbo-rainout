@@ -107,32 +107,32 @@ export function getTeamBackgroundColor(teamId: string): string {
 }
 
 /**
- * 구장별 기본 홈/어웨이 팀 매핑
+ * 구장별 홈 팀 매핑
  */
-export const STADIUM_TEAMS = {
-  jamsil: {
-    home: { id: 'lg', name: 'LG' },
-    away: { id: 'doosan', name: '두산' }
-  },
-  daegu: {
-    home: { id: 'samsung', name: '삼성' },
-    away: { id: 'kia', name: 'KIA' }
-  },
-  suwon: {
-    home: { id: 'kt', name: 'KT' },
-    away: { id: 'nc', name: 'NC' }
-  },
-  incheon: {
-    home: { id: 'ssg', name: 'SSG' },
-    away: { id: 'lotte', name: '롯데' }
-  },
+export const STADIUM_HOME_TEAMS = {
+  jamsil: 'lg',
+  incheon: 'ssg',
+  suwon: 'kt',
+  daegu: 'samsung',
+  sajik: 'lotte',
+  gwangju: 'kia',
+  daejeon: 'hanwha',
+  changwon: 'nc',
+  gocheok: 'kiwoom',
 } as const
 
-export type StadiumTeamId = keyof typeof STADIUM_TEAMS
+export type StadiumId = keyof typeof STADIUM_HOME_TEAMS
 
 /**
- * 구장 ID로 홈/어웨이 팀 정보 가져오기
+ * 구장 ID로 홈 팀 정보 가져오기
  */
-export function getStadiumTeams(stadiumId: string) {
-  return STADIUM_TEAMS[stadiumId as StadiumTeamId]
+export function getStadiumHomeTeam(stadiumId: string) {
+  const teamId = STADIUM_HOME_TEAMS[stadiumId as StadiumId]
+  if (!teamId) return undefined
+
+  const team = TEAMS[teamId]
+  return team ? {
+    id: team.id,
+    name: team.name  // 풀네임 사용
+  } : undefined
 }

@@ -1,17 +1,11 @@
 <template>
   <div class="match-ticket" :class="[statusClass, { 'is-loading': loading }]">
-    <!-- 티켓 상단: 헤더 (팀 대결 구도) -->
+    <!-- 티켓 상단: 헤더 (구장 정보) -->
     <div class="ticket-header">
-      <div class="team home">
-        <TeamLogo :teamId="homeTeam.id" size="lg" />
-        <span class="team-name">{{ homeTeam.name }}</span>
-      </div>
-      <div class="vs-badge">
-        <span class="vs">VS</span>
-      </div>
-      <div class="team away">
-        <TeamLogo :teamId="awayTeam.id" size="lg" />
-        <span class="team-name">{{ awayTeam.name }}</span>
+      <TeamLogo :teamId="homeTeam.id" size="lg" class="team-logo" />
+      <div class="stadium-info">
+        <h2 class="stadium-name">{{ stadiumName }}</h2>
+        <span class="home-team">{{ homeTeam.name }}</span>
       </div>
     </div>
 
@@ -107,7 +101,6 @@ interface Team {
 interface Props {
   // 팀 정보
   homeTeam?: Team
-  awayTeam?: Team
   // 경기 정보
   stadiumName?: string
   gameTime?: string
@@ -120,8 +113,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  homeTeam: () => ({ id: 'lg', name: 'LG' }),
-  awayTeam: () => ({ id: 'doosan', name: '두산' }),
+  homeTeam: () => ({ id: 'lg', name: 'LG 트윈스' }),
   stadiumName: '잠실야구장',
   gameTime: '18:30',
   probability: 0,
@@ -177,35 +169,34 @@ const verdictText = computed(() => {
 .ticket-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-6) var(--space-4);
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-5);
   background: linear-gradient(135deg, var(--night-black) 0%, var(--night-black-light) 100%);
 }
 
-.team {
+.team-logo {
+  flex-shrink: 0;
+}
+
+.stadium-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex: 1;
 }
 
-.team-name {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+.stadium-name {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
   color: var(--white);
-  opacity: 0.9;
+  margin: 0;
+  line-height: 1.2;
 }
 
-.vs-badge {
-  padding: var(--space-2) var(--space-3);
-}
-
-.vs {
-  font-family: var(--font-scoreboard);
-  font-size: var(--font-size-lg);
-  color: var(--clay-brown);
-  letter-spacing: 2px;
+.home-team {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Ticket Body */

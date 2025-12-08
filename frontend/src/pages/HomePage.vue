@@ -27,7 +27,6 @@
         <div class="result-panel">
           <MatchTicket
             :homeTeam="homeTeam"
-            :awayTeam="awayTeam"
             :stadiumName="stadiumName"
             :gameTime="gameTime"
             :probability="probability"
@@ -48,19 +47,13 @@ import MatchTicket from '@/components/MatchTicket.vue'
 import KoreaMapDashboard from '@/components/KoreaMapDashboard.vue'
 import StadiumSelector from '@/components/StadiumSelector.vue'
 import WeatherForm from '@/components/WeatherForm.vue'
-import { getStadiumTeams } from '@/constants/teams'
+import { getStadiumHomeTeam } from '@/constants/teams'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
 
 const homeTeam = computed(() => {
-  const teams = getStadiumTeams(stadiumStore.currentStadium)
-  return teams?.home || { id: 'lg', name: 'LG' }
-})
-
-const awayTeam = computed(() => {
-  const teams = getStadiumTeams(stadiumStore.currentStadium)
-  return teams?.away || { id: 'doosan', name: '두산' }
+  return getStadiumHomeTeam(stadiumStore.currentStadium) || { id: 'lg', name: 'LG 트윈스' }
 })
 
 const stadiumName = computed(() => 
