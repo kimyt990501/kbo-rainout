@@ -122,3 +122,5 @@ tmp/
 # Debug files
 kbo_page_debug.html
 debug_*.html
+
+.mcp.json
