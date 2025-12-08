@@ -1,42 +1,14 @@
 <template>
   <div class="weather-form">
-    <!-- 경기 일자/시간 -->
-    <div class="form-section">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="label">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            경기 날짜
-          </label>
-          <input
-            v-model="gameDate"
-            type="date"
-            class="input"
-            :min="minDate"
-            :max="maxDate"
-          />
-        </div>
-        <div class="form-group">
-          <label class="label">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            경기 시간
-          </label>
-          <select v-model="gameHour" class="input">
-            <option v-for="option in GAME_TIME_OPTIONS" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <!-- 경기 일자/시간 선택 -->
+    <GameDateTimeSelector
+      :date="gameDate"
+      :hour="gameHour"
+      :minDate="minDate"
+      :maxDate="maxDate"
+      @update:date="gameDate = $event"
+      @update:hour="gameHour = $event"
+    />
 
     <!-- 날씨 불러오기 버튼 -->
     <button
@@ -52,42 +24,7 @@
     </button>
 
     <!-- 날씨 데이터 표시 -->
-    <div v-if="weatherData" class="weather-display animate-fadeIn">
-      <div class="weather-header">
-        <h4 class="section-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
-          </svg>
-          조회된 날씨 정보
-        </h4>
-        <span :class="['data-badge', weatherData.data_source]">
-          {{ weatherData.data_source === 'forecast' ? '예보' : '과거' }}
-        </span>
-      </div>
-
-      <div class="weather-grid">
-        <div class="weather-stat">
-          <span class="stat-value">{{ weatherData.daily_precip_sum }}</span>
-          <span class="stat-unit">mm</span>
-          <span class="stat-label">일 강수량</span>
-        </div>
-        <div class="weather-stat">
-          <span class="stat-value">{{ weatherData.daily_precip_hours }}</span>
-          <span class="stat-unit">h</span>
-          <span class="stat-label">강수 시간</span>
-        </div>
-        <div class="weather-stat">
-          <span class="stat-value">{{ weatherData.pre_game_humidity }}</span>
-          <span class="stat-unit">%</span>
-          <span class="stat-label">습도</span>
-        </div>
-        <div class="weather-stat">
-          <span class="stat-value">{{ weatherData.pre_game_temp }}</span>
-          <span class="stat-unit">°C</span>
-          <span class="stat-label">기온</span>
-        </div>
-      </div>
-    </div>
+    <WeatherDataDisplay :weatherData="weatherData" />
 
     <!-- 수동 입력 토글 -->
     <div class="manual-toggle">
@@ -99,48 +36,11 @@
     </div>
 
     <!-- 수동 입력 폼 -->
-    <div v-if="showManualInput" class="manual-form animate-fadeIn">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="label">일 강수량 (mm)</label>
-          <input v-model.number="formData.daily_precip_sum" type="number" min="0" step="0.1" class="input" />
-        </div>
-        <div class="form-group">
-          <label class="label">강수 시간</label>
-          <input v-model.number="formData.daily_precip_hours" type="number" min="0" max="24" step="0.1" class="input" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="label">경기 전 3시간 강수 (mm)</label>
-          <input v-model.number="formData.pre_game_precip" type="number" min="0" step="0.1" class="input" />
-        </div>
-        <div class="form-group">
-          <label class="label">전날 강수량 (mm)</label>
-          <input v-model.number="formData.prev_day_precip" type="number" min="0" step="0.1" class="input" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="label">습도 (%)</label>
-          <input v-model.number="formData.pre_game_humidity" type="number" min="0" max="100" class="input" />
-        </div>
-        <div class="form-group">
-          <label class="label">기온 (°C)</label>
-          <input v-model.number="formData.pre_game_temp" type="number" step="0.1" class="input" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="label">풍속 (m/s)</label>
-          <input v-model.number="formData.pre_game_wind" type="number" min="0" step="0.1" class="input" />
-        </div>
-        <div class="form-group">
-          <label class="label">최대 풍속 (m/s)</label>
-          <input v-model.number="formData.daily_wind_max" type="number" min="0" step="0.1" class="input" />
-        </div>
-      </div>
-    </div>
+    <ManualWeatherInputs
+      :show="showManualInput"
+      :formData="formData"
+      @update:formData="handleFormDataUpdate"
+    />
 
     <!-- 에러 메시지 -->
     <p v-if="weatherError" class="error-msg">{{ weatherError }}</p>
@@ -167,9 +67,12 @@ import { ref, computed, reactive, watch } from 'vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 import { getWeather } from '@/api/client'
 import type { WeatherResponse } from '@/api/types'
-import { GAME_TIME_OPTIONS, DEFAULT_GAME_TIME, getTodayDate, getMinDate, getMaxDate } from '@/constants/gameTime'
+import { DEFAULT_GAME_TIME, getTodayDate, getMinDate, getMaxDate } from '@/constants/gameTime'
 import { extractErrorMessage, logError } from '@/utils/errors'
 import LoadingSpinner from './LoadingSpinner.vue'
+import GameDateTimeSelector from './GameDateTimeSelector.vue'
+import WeatherDataDisplay from './WeatherDataDisplay.vue'
+import ManualWeatherInputs from './ManualWeatherInputs.vue'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
@@ -238,6 +141,10 @@ async function fetchWeather() {
   }
 }
 
+function handleFormDataUpdate(field: keyof typeof formData, value: number) {
+  formData[field] = value
+}
+
 watch(gameDate, (newDate) => {
   if (newDate) {
     const date = new Date(newDate)
@@ -292,36 +199,6 @@ async function handlePredict() {
   gap: var(--space-4);
 }
 
-/* Form Layout */
-.form-section {
-  margin-bottom: var(--space-2);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.label svg {
-  opacity: 0.7;
-}
-
 /* Buttons */
 .fetch-btn {
   width: 100%;
@@ -333,94 +210,6 @@ async function handlePredict() {
   padding: var(--space-4) var(--space-6);
   font-size: var(--font-size-lg);
   margin-top: var(--space-2);
-}
-
-/* Spinner */
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Weather Display */
-.weather-display {
-  background: rgba(46, 204, 113, 0.1);
-  border: 1px solid rgba(46, 204, 113, 0.3);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-}
-
-.weather-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-3);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--grass-green);
-  margin: 0;
-}
-
-.data-badge {
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-}
-
-.data-badge.forecast {
-  background: rgba(52, 152, 219, 0.2);
-  color: var(--sky-blue);
-}
-
-.data-badge.historical {
-  background: rgba(127, 140, 141, 0.2);
-  color: var(--storm-gray-light);
-}
-
-.weather-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-2);
-}
-
-.weather-stat {
-  text-align: center;
-  padding: var(--space-2);
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-}
-
-.stat-value {
-  font-family: var(--font-scoreboard);
-  font-size: var(--font-size-xl);
-  color: var(--white);
-}
-
-.stat-unit {
-  font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.6);
-  margin-left: 2px;
-}
-
-.stat-label {
-  display: block;
-  font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: var(--space-1);
 }
 
 /* Toggle */
@@ -474,17 +263,6 @@ async function handlePredict() {
   color: rgba(255, 255, 255, 0.7);
 }
 
-/* Manual Form */
-.manual-form {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 /* Error */
 .error-msg {
   color: var(--danger-red);
@@ -493,16 +271,5 @@ async function handlePredict() {
   padding: var(--space-2) var(--space-3);
   background: rgba(231, 76, 60, 0.1);
   border-radius: var(--radius-md);
-}
-
-/* Mobile */
-@media (max-width: 480px) {
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .weather-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 </style>
