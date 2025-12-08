@@ -70,6 +70,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { getTeamColor } from '@/constants/teams'
 
 interface Props {
   teamId: string
@@ -82,21 +83,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const sizeClass = computed(() => `size-${props.size}`)
 
-// 팀 색상 (CSS 변수용)
-const teamColors: Record<string, string> = {
-  lg: '#C30452',
-  doosan: '#131230',
-  samsung: '#074CA1',
-  kt: '#000000',
-  ssg: '#CE0E2D',
-  lotte: '#002955',
-  hanwha: '#FF6600',
-  kiwoom: '#820024',
-  nc: '#315288',
-  kia: '#EA0029',
-}
-
-const teamColor = computed(() => teamColors[props.teamId] || '#7F8C8D')
+const teamColor = computed(() => getTeamColor(props.teamId))
 </script>
 
 <style scoped>

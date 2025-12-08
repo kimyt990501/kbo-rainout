@@ -67,6 +67,7 @@ import { ref, computed, onMounted } from 'vue'
 import { geoPath, geoMercator } from 'd3-geo'
 import StadiumMarker from './StadiumMarker.vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
+import { getStadiumMapPosition } from '@/constants/stadiums'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
@@ -78,18 +79,6 @@ const emit = defineEmits<{
   (e: 'select-stadium', stadiumId: string): void
 }>()
 
-// 구장별 지도 좌표 (% 기준)
-const stadiumPositions: Record<string, { x: number; y: number }> = {
-  jamsil: { x: 52, y: 22 },      // 서울 잠실
-  incheon: { x: 38, y: 24 },     // 인천
-  suwon: { x: 48, y: 30 },       // 수원
-  daegu: { x: 72, y: 52 },       // 대구
-  sajik: { x: 80, y: 70 },       // 부산 사직
-  gwangju: { x: 32, y: 68 },     // 광주
-  daejeon: { x: 48, y: 48 },     // 대전
-  changwon: { x: 75, y: 65 },    // 창원
-  gocheok: { x: 45, y: 22 },     // 고척
-}
 
 // GeoJSON 로드 및 SVG path 생성
 onMounted(async () => {
@@ -110,8 +99,6 @@ onMounted(async () => {
       name: feature.properties.NAME_1 || feature.properties.name || 'Unknown',
       path: pathGenerator(feature) || ''
     }))
-
-    console.log('지도 로딩 완료:', provincesPaths.value.length, '개 시도')
   } catch (error) {
     console.error('지도 로딩 실패:', error)
   }
@@ -129,11 +116,11 @@ const stadiumsWithPosition = computed(() => {
   return stadiumStore.stadiumList
     .filter(s => s.available)
     .map(stadium => {
-      const pos = stadiumPositions[stadium.id] || { x: 50, y: 50 }
-      const prediction = predictionStore.lastPrediction?.stadium === stadium.id 
-        ? predictionStore.lastPrediction 
+      const pos = getStadiumMapPosition(stadium.id)
+      const prediction = predictionStore.lastPrediction?.stadium === stadium.id
+        ? predictionStore.lastPrediction
         : null
-      
+
       return {
         stadiumId: stadium.id,
         stadiumName: stadium.name,

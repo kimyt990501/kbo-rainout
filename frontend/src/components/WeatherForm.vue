@@ -30,9 +30,9 @@
             경기 시간
           </label>
           <select v-model="gameHour" class="input">
-            <option :value="14">14:00 (주간)</option>
-            <option :value="17">17:00 (조기)</option>
-            <option :value="18">18:30 (야간)</option>
+            <option v-for="option in GAME_TIME_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
         </div>
       </div>
@@ -167,6 +167,7 @@ import { ref, computed, reactive, watch } from 'vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 import { getWeather } from '@/api/client'
 import type { WeatherResponse } from '@/api/types'
+import { GAME_TIME_OPTIONS, DEFAULT_GAME_TIME, getTodayDate, getMinDate, getMaxDate } from '@/constants/gameTime'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
@@ -182,20 +183,12 @@ const showManualInput = ref(false)
 
 // 날짜 범위
 const today = new Date()
-const todayStr = today.toISOString().split('T')[0]
-const minDate = computed(() => {
-  const d = new Date()
-  d.setFullYear(d.getFullYear() - 5)
-  return d.toISOString().split('T')[0]
-})
-const maxDate = computed(() => {
-  const d = new Date()
-  d.setDate(d.getDate() + 14)
-  return d.toISOString().split('T')[0]
-})
+const todayStr = getTodayDate()
+const minDate = computed(() => getMinDate())
+const maxDate = computed(() => getMaxDate())
 
 const gameDate = ref(todayStr)
-const gameHour = ref(18)
+const gameHour = ref(DEFAULT_GAME_TIME)
 
 const formData = reactive({
   daily_precip_sum: 0,

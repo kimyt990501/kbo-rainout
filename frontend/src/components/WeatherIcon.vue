@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { getRainIntensity } from '@/constants/probability'
 
 interface Props {
   probability: number // 취소 확률 (0-1)
@@ -65,12 +66,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md'
 })
 
-const weatherType = computed(() => {
-  if (props.probability >= 0.7) return 'heavy'
-  if (props.probability >= 0.5) return 'rainy'
-  if (props.probability >= 0.3) return 'cloudy'
-  return 'sunny'
-})
+const weatherType = computed(() => getRainIntensity(props.probability))
 
 const weatherClass = computed(() => `weather-${weatherType.value}`)
 const sizeClass = computed(() => `size-${props.size}`)

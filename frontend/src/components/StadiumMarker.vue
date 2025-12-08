@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import WeatherIcon from './WeatherIcon.vue'
+import { getMarkerStatus, PROBABILITY_THRESHOLDS } from '@/constants/probability'
 
 interface Props {
   stadiumId: string
@@ -61,13 +62,9 @@ defineEmits<{
 
 const probabilityPercent = computed(() => Math.round(props.probability * 100))
 
-const isRaining = computed(() => props.probability >= 0.5)
+const isRaining = computed(() => props.probability >= PROBABILITY_THRESHOLDS.MEDIUM)
 
-const statusClass = computed(() => {
-  if (props.probability >= 0.7) return 'status-danger'
-  if (props.probability >= 0.5) return 'status-warning'
-  return 'status-safe'
-})
+const statusClass = computed(() => `status-${getMarkerStatus(props.probability)}`)
 
 // 툴팁을 아래쪽에 표시할지 결정 (상단 30%에 있는 마커는 아래쪽에 표시)
 const showTooltipBelow = computed(() => props.y < 30)

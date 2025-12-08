@@ -96,6 +96,7 @@
 import { computed } from 'vue'
 import WeatherIcon from './WeatherIcon.vue'
 import TeamLogo from './TeamLogo.vue'
+import { getStatusClass, PROBABILITY_THRESHOLDS } from '@/constants/probability'
 
 interface Team {
   id: string
@@ -132,14 +133,12 @@ const hasResult = computed(() => props.probability > 0 || props.predictionText)
 
 const probabilityPercent = computed(() => Math.round(props.probability * 100))
 
-const isPlayable = computed(() => props.probability < 0.5)
+const isPlayable = computed(() => props.probability < PROBABILITY_THRESHOLDS.MEDIUM)
 
 const statusClass = computed(() => {
   if (props.loading) return 'status-loading'
   if (!hasResult.value) return 'status-empty'
-  if (props.probability >= 0.7) return 'status-danger'
-  if (props.probability >= 0.5) return 'status-warning'
-  return 'status-safe'
+  return getStatusClass(props.probability)
 })
 
 const confidenceClass = computed(() => `confidence-${props.confidence}`)

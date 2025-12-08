@@ -17,21 +17,15 @@ import { RouterView } from 'vue-router'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutFooter from '@/components/LayoutFooter.vue'
 import { usePredictionStore, useStadiumStore } from '@/store'
+import { getStadiumBackground } from '@/constants/stadiums'
+import { getWeatherIconType } from '@/constants/probability'
 
 const predictionStore = usePredictionStore()
 const stadiumStore = useStadiumStore()
 
-// 구장별 배경 이미지 (실제로는 이미지 URL 사용)
-const stadiumBackgrounds: Record<string, string> = {
-  jamsil: 'linear-gradient(135deg, #1a365d 0%, #2d4a7c 50%, #1e3a5f 100%)',
-  daegu: 'linear-gradient(135deg, #074CA1 0%, #0a5dc2 50%, #063d81 100%)',
-  suwon: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-  incheon: 'linear-gradient(135deg, #8B0000 0%, #a52a2a 50%, #6b0000 100%)',
-}
-
 const backgroundStyle = computed(() => {
   const stadium = stadiumStore.currentStadium
-  const bg = stadiumBackgrounds[stadium] || stadiumBackgrounds.jamsil
+  const bg = getStadiumBackground(stadium)
   return { background: bg }
 })
 
@@ -39,10 +33,8 @@ const backgroundStyle = computed(() => {
 const weatherClass = computed(() => {
   const prediction = predictionStore.lastPrediction
   if (!prediction) return 'weather-default'
-  
-  if (prediction.cancellation_probability >= 0.7) return 'weather-rain'
-  if (prediction.cancellation_probability >= 0.5) return 'weather-cloudy'
-  return 'weather-sunny'
+
+  return getWeatherIconType(prediction.cancellation_probability)
 })
 </script>
 

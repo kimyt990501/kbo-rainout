@@ -48,26 +48,19 @@ import MatchTicket from '@/components/MatchTicket.vue'
 import KoreaMapDashboard from '@/components/KoreaMapDashboard.vue'
 import StadiumSelector from '@/components/StadiumSelector.vue'
 import WeatherForm from '@/components/WeatherForm.vue'
+import { getStadiumTeams } from '@/constants/teams'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
 
-// 팀 정보 매핑
-const teamMapping: Record<string, { home: { id: string; name: string }; away: { id: string; name: string } }> = {
-  jamsil: { home: { id: 'lg', name: 'LG' }, away: { id: 'doosan', name: '두산' } },
-  daegu: { home: { id: 'samsung', name: '삼성' }, away: { id: 'kia', name: 'KIA' } },
-  suwon: { home: { id: 'kt', name: 'KT' }, away: { id: 'nc', name: 'NC' } },
-  incheon: { home: { id: 'ssg', name: 'SSG' }, away: { id: 'lotte', name: '롯데' } },
-}
-
 const homeTeam = computed(() => {
-  const mapping = teamMapping[stadiumStore.currentStadium]
-  return mapping?.home || { id: 'lg', name: 'LG' }
+  const teams = getStadiumTeams(stadiumStore.currentStadium)
+  return teams?.home || { id: 'lg', name: 'LG' }
 })
 
 const awayTeam = computed(() => {
-  const mapping = teamMapping[stadiumStore.currentStadium]
-  return mapping?.away || { id: 'doosan', name: '두산' }
+  const teams = getStadiumTeams(stadiumStore.currentStadium)
+  return teams?.away || { id: 'doosan', name: '두산' }
 })
 
 const stadiumName = computed(() => 
