@@ -18,18 +18,9 @@
           </div>
         </div>
 
-        <!-- 중앙: 지도 대시보드 + 타임라인 -->
+        <!-- 중앙: 지도 대시보드 -->
         <div class="map-panel">
           <KoreaMapDashboard @select-stadium="handleStadiumFromMap" />
-
-          <!-- 타임라인 -->
-          <RainfallTimeline
-            v-if="timelineData"
-            :timeline="timelineData.timeline"
-            :total-precipitation="timelineData.total_precipitation"
-            :loading="timelineLoading"
-            class="timeline-section"
-          />
         </div>
 
         <!-- 우측: 예측 결과 (티켓 카드) -->
@@ -42,15 +33,34 @@
             :confidence="confidence"
             :predictionText="predictionText"
             :loading="loading"
+            :showTimelineButton="!!timelineData"
+            @scroll-to-timeline="scrollToTimeline"
           />
         </div>
+      </div>
+
+      <!-- 스크롤 인디케이터 -->
+      <div v-if="timelineData && showScrollIndicator" class="scroll-indicator" @click="scrollToTimeline">
+        <span class="scroll-text">시간대별 강수량 보기</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+
+      <!-- 타임라인 (전체 폭) -->
+      <div v-if="timelineData" ref="timelineRef" class="timeline-wrapper">
+        <RainfallTimeline
+          :timeline="timelineData.timeline"
+          :total-precipitation="timelineData.total_precipitation"
+          :loading="timelineLoading"
+        />
       </div>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 import MatchTicket from '@/components/MatchTicket.vue'
 import KoreaMapDashboard from '@/components/KoreaMapDashboard.vue'
@@ -67,10 +77,34 @@ const predictionStore = usePredictionStore()
 // 타임라인 state
 const timelineData = ref<WeatherTimelineResponse | null>(null)
 const timelineLoading = ref(false)
+const timelineRef = ref<HTMLElement | null>(null)
+const showScrollIndicator = ref(true)
+
+// 스크롤 인디케이터 표시 여부 (타임라인이 화면에 보이면 숨김)
+function handleScroll() {
+  if (!timelineRef.value) return
+
+  const rect = timelineRef.value.getBoundingClientRect()
+  const isVisible = rect.top < window.innerHeight && rect.bottom >= 0
+
+  showScrollIndicator.value = !isVisible
+}
+
+// 타임라인으로 스크롤
+function scrollToTimeline() {
+  if (!timelineRef.value) return
+
+  timelineRef.value.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  })
+}
 
 // 예측 완료 후 타임라인 조회
 async function handlePredictionComplete(data: { gameDate: string; gameHour: number }) {
   timelineLoading.value = true
+  showScrollIndicator.value = true
+
   try {
     const response = await getWeatherTimeline({
       stadium: stadiumStore.currentStadium,
@@ -87,6 +121,15 @@ async function handlePredictionComplete(data: { gameDate: string; gameHour: numb
     timelineLoading.value = false
   }
 }
+
+// 스크롤 이벤트 리스너
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 
 const homeTeam = computed(() => {
   return getStadiumHomeTeam(stadiumStore.currentStadium) || { id: 'lg', name: 'LG 트윈스' }
@@ -240,10 +283,6 @@ function handleStadiumFromMap(stadiumId: string) {
   gap: var(--space-4);
 }
 
-.timeline-section {
-  margin-top: var(--space-4);
-}
-
 @media (min-width: 1200px) {
   .map-panel {
     min-height: 700px;
@@ -254,6 +293,96 @@ function handleStadiumFromMap(stadiumId: string) {
 .result-panel {
   display: flex;
   flex-direction: column;
+}
+
+/* 스크롤 인디케이터 */
+.scroll-indicator {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.95), rgba(41, 128, 185, 0.95));
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 20px rgba(52, 152, 219, 0.4);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  z-index: 100;
+  animation: fadeInBounce 0.6s ease-out;
+}
+
+.scroll-indicator:hover {
+  transform: translateX(-50%) translateY(-4px);
+  box-shadow: 0 6px 25px rgba(52, 152, 219, 0.6);
+}
+
+.scroll-text {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+.scroll-indicator svg {
+  color: var(--white);
+  animation: bounce 2s infinite;
+}
+
+@keyframes fadeInBounce {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+/* 타임라인 래퍼 (전체 폭) */
+.timeline-wrapper {
+  margin-top: var(--space-6);
+  animation: slideInUp 0.5s ease-out;
+  scroll-margin-top: var(--space-6);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 데스크탑에서 타임라인 여백 조정 */
+@media (min-width: 1200px) {
+  .timeline-wrapper {
+    margin-top: var(--space-8);
+    scroll-margin-top: var(--space-8);
+  }
 }
 
 /* 모바일 최적화 */
@@ -277,6 +406,19 @@ function handleStadiumFromMap(stadiumId: string) {
 
   .map-panel {
     min-height: 400px;
+  }
+
+  .timeline-wrapper {
+    margin-top: var(--space-4);
+  }
+
+  .scroll-indicator {
+    bottom: var(--space-4);
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .scroll-text {
+    font-size: var(--font-size-xs);
   }
 }
 </style>

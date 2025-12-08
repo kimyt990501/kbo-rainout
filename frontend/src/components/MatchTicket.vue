@@ -82,6 +82,17 @@
         </div>
         <span class="verdict-text">{{ verdictText }}</span>
       </div>
+
+      <!-- 타임라인 보기 버튼 -->
+      <button v-if="hasResult && showTimelineButton" class="timeline-button" @click="$emit('scrollToTimeline')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+        </svg>
+        <span>시간대별 강수량 보기</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -110,6 +121,7 @@ interface Props {
   predictionText?: string
   // 상태
   loading?: boolean
+  showTimelineButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -118,8 +130,14 @@ const props = withDefaults(defineProps<Props>(), {
   gameTime: '18:30',
   probability: 0,
   confidence: 'low',
-  loading: false
+  loading: false,
+  showTimelineButton: false
 })
+
+// Emits
+defineEmits<{
+  scrollToTimeline: []
+}>()
 
 // Computed
 const hasResult = computed(() => props.probability > 0 || props.predictionText)
@@ -379,6 +397,51 @@ const verdictText = computed(() => {
 
 .verdict-icon {
   display: flex;
+}
+
+/* Timeline Button */
+.timeline-button {
+  margin-top: var(--space-3);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1));
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  border-radius: var(--radius-lg);
+  color: #3498db;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.timeline-button:hover {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.2));
+  border-color: rgba(52, 152, 219, 0.5);
+  transform: translateY(-2px);
+}
+
+.timeline-button:active {
+  transform: translateY(0);
+}
+
+.timeline-button svg:last-child {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
 }
 
 /* Status-based borders */
