@@ -77,6 +77,11 @@ import ManualWeatherInputs from './ManualWeatherInputs.vue'
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
 
+// Emits
+const emit = defineEmits<{
+  (e: 'predictionComplete', data: { gameDate: string; gameHour: number }): void
+}>()
+
 const predictionLoading = computed(() => predictionStore.loading)
 const predictionError = computed(() => predictionStore.error)
 
@@ -189,6 +194,14 @@ async function handlePredict() {
     month: data.month,
     dayofweek: data.dayofweek
   })
+
+  // 예측 성공 시 타임라인 조회를 위해 emit
+  if (predictionStore.lastPrediction && !predictionStore.error) {
+    emit('predictionComplete', {
+      gameDate: gameDate.value,
+      gameHour: gameHour.value
+    })
+  }
 }
 </script>
 

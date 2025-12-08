@@ -99,3 +99,32 @@ export interface WeatherResponse {
   dayofweek: number
   data_source: 'forecast' | 'historical'
 }
+
+// 타임라인 API 요청
+export interface WeatherTimelineRequest {
+  stadium: string
+  game_date: string
+  game_hour: number
+  hours_before?: number
+  hours_after?: number
+}
+
+// 타임라인 포인트
+export interface TimelinePoint {
+  hour: number
+  time_label: string
+  precipitation: number
+  is_game_time: boolean
+  relative_time: string
+}
+
+// 타임라인 API 응답
+export interface WeatherTimelineResponse {
+  stadium: string
+  stadium_name: string
+  game_date: string
+  game_hour: number
+  timeline: TimelinePoint[]
+  total_precipitation: number
+  data_source: 'forecast' | 'historical'
+}

@@ -14,13 +14,22 @@
               경기 정보 입력
             </h3>
             <StadiumSelector />
-            <WeatherForm />
+            <WeatherForm @prediction-complete="handlePredictionComplete" />
           </div>
         </div>
 
-        <!-- 중앙: 지도 대시보드 -->
+        <!-- 중앙: 지도 대시보드 + 타임라인 -->
         <div class="map-panel">
           <KoreaMapDashboard @select-stadium="handleStadiumFromMap" />
+
+          <!-- 타임라인 -->
+          <RainfallTimeline
+            v-if="timelineData"
+            :timeline="timelineData.timeline"
+            :total-precipitation="timelineData.total_precipitation"
+            :loading="timelineLoading"
+            class="timeline-section"
+          />
         </div>
 
         <!-- 우측: 예측 결과 (티켓 카드) -->
@@ -41,16 +50,43 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 import MatchTicket from '@/components/MatchTicket.vue'
 import KoreaMapDashboard from '@/components/KoreaMapDashboard.vue'
 import StadiumSelector from '@/components/StadiumSelector.vue'
 import WeatherForm from '@/components/WeatherForm.vue'
+import RainfallTimeline from '@/components/RainfallTimeline.vue'
 import { getStadiumHomeTeam } from '@/constants/teams'
+import { getWeatherTimeline } from '@/api/client'
+import type { WeatherTimelineResponse } from '@/api/types'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
+
+// 타임라인 state
+const timelineData = ref<WeatherTimelineResponse | null>(null)
+const timelineLoading = ref(false)
+
+// 예측 완료 후 타임라인 조회
+async function handlePredictionComplete(data: { gameDate: string; gameHour: number }) {
+  timelineLoading.value = true
+  try {
+    const response = await getWeatherTimeline({
+      stadium: stadiumStore.currentStadium,
+      game_date: data.gameDate,
+      game_hour: data.gameHour,
+      hours_before: 3,
+      hours_after: 3
+    })
+    timelineData.value = response
+  } catch (error) {
+    console.error('타임라인 조회 실패:', error)
+    timelineData.value = null
+  } finally {
+    timelineLoading.value = false
+  }
+}
 
 const homeTeam = computed(() => {
   return getStadiumHomeTeam(stadiumStore.currentStadium) || { id: 'lg', name: 'LG 트윈스' }
@@ -199,6 +235,13 @@ function handleStadiumFromMap(stadiumId: string) {
 /* 지도 패널 */
 .map-panel {
   min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.timeline-section {
+  margin-top: var(--space-4);
 }
 
 @media (min-width: 1200px) {

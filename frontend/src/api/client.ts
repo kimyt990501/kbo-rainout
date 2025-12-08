@@ -8,7 +8,9 @@ import type {
   PredictionRequest,
   PredictionResponse,
   WeatherRequest,
-  WeatherResponse
+  WeatherResponse,
+  WeatherTimelineRequest,
+  WeatherTimelineResponse
 } from './types'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8600'
@@ -59,6 +61,14 @@ export async function getWeather(
   payload: WeatherRequest
 ): Promise<WeatherResponse> {
   const response = await apiClient.post<WeatherResponse>('/api/weather', payload)
+  return response.data
+}
+
+// 날씨 타임라인 조회
+export async function getWeatherTimeline(
+  payload: WeatherTimelineRequest
+): Promise<WeatherTimelineResponse> {
+  const response = await apiClient.post<WeatherTimelineResponse>('/api/weather/timeline', payload)
   return response.data
 }
 
