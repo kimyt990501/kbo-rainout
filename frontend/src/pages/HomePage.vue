@@ -1,33 +1,10 @@
 <template>
   <main class="home-page">
     <div class="container">
-      <!-- 모바일: 티켓 카드 + 입력폼 세로 배열 -->
-      <!-- 데스크탑: 지도 대시보드 + 사이드 패널 -->
+      <!-- 3컬럼 레이아웃: 입력폼 | 지도 | 예측 결과 -->
       <div class="layout">
-        <!-- 좌측/상단: 지도 대시보드 (데스크탑) 또는 티켓 카드 (모바일) -->
-        <div class="main-panel">
-          <!-- 티켓 카드 (모바일 & 결과 표시용) -->
-          <div class="ticket-section">
-            <MatchTicket
-              :homeTeam="homeTeam"
-              :awayTeam="awayTeam"
-              :stadiumName="stadiumName"
-              :gameTime="gameTime"
-              :probability="probability"
-              :confidence="confidence"
-              :predictionText="predictionText"
-              :loading="loading"
-            />
-          </div>
-
-          <!-- 지도 대시보드 (데스크탑 전용) -->
-          <div class="map-section">
-            <KoreaMapDashboard @select-stadium="handleStadiumFromMap" />
-          </div>
-        </div>
-
-        <!-- 우측/하단: 입력 폼 -->
-        <div class="side-panel">
+        <!-- 좌측: 입력 폼 -->
+        <div class="input-panel">
           <div class="panel-card glass-strong">
             <h3 class="panel-title">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -39,6 +16,25 @@
             <StadiumSelector />
             <WeatherForm />
           </div>
+        </div>
+
+        <!-- 중앙: 지도 대시보드 -->
+        <div class="map-panel">
+          <KoreaMapDashboard @select-stadium="handleStadiumFromMap" />
+        </div>
+
+        <!-- 우측: 예측 결과 (티켓 카드) -->
+        <div class="result-panel">
+          <MatchTicket
+            :homeTeam="homeTeam"
+            :awayTeam="awayTeam"
+            :stadiumName="stadiumName"
+            :gameTime="gameTime"
+            :probability="probability"
+            :confidence="confidence"
+            :predictionText="predictionText"
+            :loading="loading"
+          />
         </div>
       </div>
     </div>
@@ -106,63 +102,98 @@ function handleStadiumFromMap(stadiumId: string) {
 }
 
 .container {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 var(--space-4);
 }
 
-/* 레이아웃 */
+/* 기본 레이아웃 (모바일: 세로 배치) */
 .layout {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "input"
+    "result"
+    "map";
 }
 
-/* 데스크탑: 2컬럼 레이아웃 */
-@media (min-width: 1024px) {
+.input-panel {
+  grid-area: input;
+}
+
+.map-panel {
+  grid-area: map;
+}
+
+.result-panel {
+  grid-area: result;
+}
+
+/* 태블릿: 2컬럼 레이아웃 (입력+결과 / 지도) */
+@media (min-width: 768px) {
   .layout {
-    grid-template-columns: 1fr 400px;
+    gap: var(--space-5);
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "input result"
+      "map map";
+  }
+}
+
+/* 데스크탑: 3컬럼 레이아웃 (입력 | 지도 | 결과) */
+@media (min-width: 1200px) {
+  .layout {
+    gap: var(--space-6);
+    grid-template-columns: 380px 1fr 380px;
+    grid-template-areas: "input map result";
     align-items: start;
   }
-}
 
-/* 메인 패널 */
-.main-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-/* 티켓 섹션 */
-.ticket-section {
-  display: block;
-}
-
-/* 지도 섹션 - 데스크탑에서만 표시 */
-.map-section {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .map-section {
-    display: block;
-  }
-  
-  /* 데스크탑에서는 티켓을 작게 표시 */
-  .ticket-section {
+  /* 스크롤 시 입력폼과 결과 고정 */
+  .input-panel,
+  .result-panel {
     position: sticky;
-    top: 100px;
+    top: calc(var(--header-height, 80px) + var(--space-4));
+    max-height: calc(100vh - var(--header-height, 80px) - var(--space-8));
+    overflow-y: auto;
+  }
+
+  /* 스크롤바 스타일링 */
+  .input-panel::-webkit-scrollbar,
+  .result-panel::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .input-panel::-webkit-scrollbar-track,
+  .result-panel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+
+  .input-panel::-webkit-scrollbar-thumb,
+  .result-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .input-panel::-webkit-scrollbar-thumb:hover,
+  .result-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 }
 
-/* 사이드 패널 */
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+/* 초대형 화면: 컬럼 너비 증가 */
+@media (min-width: 1600px) {
+  .layout {
+    grid-template-columns: 420px 1fr 420px;
+  }
 }
 
+/* 패널 카드 스타일 */
 .panel-card {
   padding: var(--space-6);
+  height: 100%;
 }
 
 .panel-title {
@@ -179,19 +210,44 @@ function handleStadiumFromMap(stadiumId: string) {
   color: var(--grass-green);
 }
 
+/* 지도 패널 */
+.map-panel {
+  min-height: 500px;
+}
+
+@media (min-width: 1200px) {
+  .map-panel {
+    min-height: 700px;
+  }
+}
+
+/* 결과 패널 */
+.result-panel {
+  display: flex;
+  flex-direction: column;
+}
+
 /* 모바일 최적화 */
 @media (max-width: 640px) {
   .home-page {
     padding: var(--space-4) 0;
   }
-  
+
+  .layout {
+    gap: var(--space-3);
+  }
+
   .panel-card {
     padding: var(--space-4);
   }
-  
+
   .panel-title {
     font-size: var(--font-size-base);
     margin-bottom: var(--space-4);
+  }
+
+  .map-panel {
+    min-height: 400px;
   }
 }
 </style>
