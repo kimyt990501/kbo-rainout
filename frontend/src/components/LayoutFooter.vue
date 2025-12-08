@@ -2,7 +2,7 @@
   <footer class="footer glass">
     <div class="footer-content">
       <div class="footer-info">
-        <span class="copyright">© 2024 KBO 우천취소 예측</span>
+        <span class="copyright">© 2025 KBO Rainout</span>
         <span class="separator">•</span>
         <span class="powered-by">XGBoost AI 모델 사용</span>
       </div>
