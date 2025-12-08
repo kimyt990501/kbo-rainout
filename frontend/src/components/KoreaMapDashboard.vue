@@ -6,45 +6,30 @@
     </div>
 
     <div class="map-container">
-      <!-- 대한민국 간소화 SVG 지도 -->
-      <svg class="korea-map" viewBox="0 0 400 500" preserveAspectRatio="xMidYMid meet">
+      <!-- 대한민국 상세 지도 (GeoJSON 기반) -->
+      <svg class="korea-map" viewBox="0 0 800 900" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <!-- 그라데이션 -->
-          <linearGradient id="mapGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#3498DB;stop-opacity:0.3" />
-            <stop offset="100%" style="stop-color:#2ECC71;stop-opacity:0.2" />
-          </linearGradient>
-          <!-- 그림자 -->
           <filter id="mapShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.3"/>
+            <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.25"/>
           </filter>
         </defs>
 
-        <!-- 한반도 윤곽 (간소화) -->
-        <path
-          class="korea-outline"
-          d="M200 20 
-             C230 30, 280 50, 320 80
-             C350 110, 370 150, 375 200
-             C380 250, 370 300, 350 350
-             C330 400, 280 440, 230 470
-             C200 485, 170 485, 140 470
-             C90 440, 50 400, 35 350
-             C20 300, 25 250, 40 200
-             C55 150, 90 110, 130 80
-             C170 50, 180 30, 200 20Z"
-          fill="url(#mapGradient)"
-          stroke="rgba(255,255,255,0.3)"
-          stroke-width="2"
-          filter="url(#mapShadow)"
-        />
+        <!-- 시도별 경계 -->
+        <g v-if="provincesPaths.length > 0">
+          <path
+            v-for="(province, index) in provincesPaths"
+            :key="index"
+            :d="province.path"
+            class="province-outline"
+            :class="getProvinceClass(province.name)"
+            :filter="'url(#mapShadow)'"
+          />
+        </g>
 
-        <!-- 주요 도시/지역 표시 (반투명 원) -->
-        <circle cx="200" cy="100" r="25" fill="rgba(255,255,255,0.1)" /> <!-- 서울 -->
-        <circle cx="320" cy="280" r="20" fill="rgba(255,255,255,0.1)" /> <!-- 대구 -->
-        <circle cx="350" cy="380" r="20" fill="rgba(255,255,255,0.1)" /> <!-- 부산 -->
-        <circle cx="120" cy="350" r="18" fill="rgba(255,255,255,0.1)" /> <!-- 광주 -->
-        <circle cx="200" cy="250" r="18" fill="rgba(255,255,255,0.1)" /> <!-- 대전 -->
+        <!-- 로딩 중 표시 -->
+        <text v-else x="400" y="450" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="16">
+          지도 로딩 중...
+        </text>
       </svg>
 
       <!-- 구장 마커들 -->
@@ -78,7 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { geoPath, geoMercator } from 'd3-geo'
 import StadiumMarker from './StadiumMarker.vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 
@@ -86,6 +72,7 @@ const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
 
 const activeStadium = ref<string | null>(null)
+const provincesPaths = ref<Array<{ name: string; path: string }>>([])
 
 const emit = defineEmits<{
   (e: 'select-stadium', stadiumId: string): void
@@ -102,6 +89,39 @@ const stadiumPositions: Record<string, { x: number; y: number }> = {
   daejeon: { x: 48, y: 48 },     // 대전
   changwon: { x: 75, y: 65 },    // 창원
   gocheok: { x: 45, y: 22 },     // 고척
+}
+
+// GeoJSON 로드 및 SVG path 생성
+onMounted(async () => {
+  try {
+    const response = await fetch('/skorea-provinces.json')
+    const geojson = await response.json()
+
+    // Mercator 투영 설정 (대한민국 중심)
+    const projection = geoMercator()
+      .center([127.5, 36.5])  // 대한민국 중심 경도, 위도
+      .scale(8000)            // 스케일 조정
+      .translate([400, 450])  // SVG 중심으로 이동
+
+    const pathGenerator = geoPath().projection(projection)
+
+    // 각 시도를 SVG path로 변환
+    provincesPaths.value = geojson.features.map((feature: any) => ({
+      name: feature.properties.NAME_1 || feature.properties.name || 'Unknown',
+      path: pathGenerator(feature) || ''
+    }))
+
+    console.log('지도 로딩 완료:', provincesPaths.value.length, '개 시도')
+  } catch (error) {
+    console.error('지도 로딩 실패:', error)
+  }
+})
+
+// 시도별 스타일 클래스
+function getProvinceClass(name: string): string {
+  // 주요 도시는 강조
+  const majorCities = ['Seoul', 'Busan', 'Daegu', 'Incheon', 'Gwangju', 'Daejeon', 'Ulsan']
+  return majorCities.includes(name) ? 'province-major' : ''
 }
 
 // 구장 목록에 좌표 및 예측 데이터 추가
@@ -175,12 +195,27 @@ function handleSelectStadium(stadiumId: string) {
 
 .korea-map {
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
   height: auto;
 }
 
-.korea-outline {
+.province-outline {
+  fill: rgba(52, 152, 219, 0.2);
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 1;
   transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.province-outline:hover {
+  fill: rgba(46, 204, 113, 0.3);
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 1.5;
+}
+
+.province-outline.province-major {
+  fill: rgba(52, 152, 219, 0.25);
+  stroke: rgba(255, 255, 255, 0.5);
 }
 
 .map-legend {
