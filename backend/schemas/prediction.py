@@ -359,3 +359,127 @@ class WeatherResponse(BaseModel):
             ]
         }
     }
+
+
+class WeatherTimelineRequest(BaseModel):
+    """날씨 타임라인 요청 스키마"""
+
+    stadium: str = Field(
+        default=DEFAULT_STADIUM,
+        description=f"구장 ID (지원: {', '.join(SUPPORTED_STADIUMS)})"
+    )
+    game_date: str = Field(
+        ...,
+        description="경기 날짜 (YYYY-MM-DD 형식)"
+    )
+    game_hour: int = Field(
+        default=18,
+        ge=0,
+        le=23,
+        description="경기 시작 시간 (0-23, 기본값 18시)"
+    )
+    hours_before: int = Field(
+        default=3,
+        ge=0,
+        le=12,
+        description="경기 전 몇 시간부터 조회할지 (기본값 3시간)"
+    )
+    hours_after: int = Field(
+        default=3,
+        ge=0,
+        le=12,
+        description="경기 후 몇 시간까지 조회할지 (기본값 3시간)"
+    )
+
+    @field_validator("stadium")
+    @classmethod
+    def validate_stadium(cls, v: str) -> str:
+        if v not in SUPPORTED_STADIUMS:
+            raise ValueError(
+                f"현재 {v} 구장은 지원하지 않습니다. 지원 구장: {', '.join(SUPPORTED_STADIUMS)}"
+            )
+        return v
+
+    @field_validator("game_date")
+    @classmethod
+    def validate_game_date(cls, v: str) -> str:
+        try:
+            from datetime import datetime
+            datetime.strptime(v, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력하세요.")
+        return v
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "stadium": "jamsil",
+                    "game_date": "2025-07-15",
+                    "game_hour": 18,
+                    "hours_before": 3,
+                    "hours_after": 3
+                }
+            ]
+        }
+    }
+
+
+class TimelinePoint(BaseModel):
+    """타임라인 단일 시간대 데이터"""
+
+    hour: int = Field(..., description="시간 (0-23)")
+    time_label: str = Field(..., description="시간 라벨 (예: '15:00', '18:30')")
+    precipitation: float = Field(..., ge=0, description="강수량 (mm)")
+    is_game_time: bool = Field(default=False, description="경기 시작 시간 여부")
+    relative_time: str = Field(..., description="상대 시간 (예: '경기 3시간 전', '경기 시작', '경기 중')")
+
+
+class WeatherTimelineResponse(BaseModel):
+    """날씨 타임라인 응답 스키마"""
+
+    stadium: str = Field(..., description="구장 ID")
+    stadium_name: str = Field(..., description="구장 한글명")
+    game_date: str = Field(..., description="경기 날짜")
+    game_hour: int = Field(..., description="경기 시작 시간")
+    timeline: List[TimelinePoint] = Field(..., description="시간대별 날씨 데이터")
+    total_precipitation: float = Field(..., description="전체 기간 누적 강수량 (mm)")
+    data_source: str = Field(..., description="데이터 출처 (forecast/historical)")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "stadium": "jamsil",
+                    "stadium_name": "잠실야구장",
+                    "game_date": "2025-07-15",
+                    "game_hour": 18,
+                    "timeline": [
+                        {
+                            "hour": 15,
+                            "time_label": "15:00",
+                            "precipitation": 2.5,
+                            "is_game_time": False,
+                            "relative_time": "경기 3시간 전"
+                        },
+                        {
+                            "hour": 18,
+                            "time_label": "18:00",
+                            "precipitation": 5.2,
+                            "is_game_time": True,
+                            "relative_time": "경기 시작"
+                        },
+                        {
+                            "hour": 21,
+                            "time_label": "21:00",
+                            "precipitation": 1.8,
+                            "is_game_time": False,
+                            "relative_time": "경기 3시간 후"
+                        }
+                    ],
+                    "total_precipitation": 25.3,
+                    "data_source": "forecast"
+                }
+            ]
+        }
+    }

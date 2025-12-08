@@ -207,6 +207,113 @@ class WeatherService:
             "daily_temp_mean": round(daily_temp_mean, 1),
         }
 
+    async def get_weather_timeline(
+        self,
+        stadium: str,
+        game_date: str,
+        game_hour: int = 18,
+        hours_before: int = 3,
+        hours_after: int = 3
+    ) -> dict:
+        """
+        경기 시간 전후 타임라인 날씨 데이터 조회
+
+        Args:
+            stadium: 구장 ID
+            game_date: 경기 날짜 (YYYY-MM-DD)
+            game_hour: 경기 시작 시간 (0-23)
+            hours_before: 경기 전 몇 시간부터 조회할지
+            hours_after: 경기 후 몇 시간까지 조회할지
+
+        Returns:
+            타임라인 데이터 딕셔너리
+        """
+        # 구장 좌표 가져오기
+        stadium_config = STADIUM_MODELS.get(stadium)
+        if not stadium_config:
+            raise ValueError(f"지원하지 않는 구장입니다: {stadium}")
+
+        lat, lon = stadium_config["coordinates"]
+
+        # 날짜 파싱
+        target_date = datetime.strptime(game_date, "%Y-%m-%d")
+        today = datetime.now().date()
+
+        # 예보 vs 과거 데이터 결정
+        is_forecast = target_date.date() >= today
+
+        if is_forecast:
+            api_url = FORECAST_API_URL
+        else:
+            api_url = HISTORICAL_API_URL
+
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "hourly": "precipitation",
+            "timezone": "Asia/Seoul",
+            "start_date": game_date,
+            "end_date": game_date,
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(api_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+        hourly = data.get("hourly", {})
+        precips = hourly.get("precipitation", [])
+
+        # 타임라인 포인트 생성
+        timeline = []
+        start_hour = max(0, game_hour - hours_before)
+        end_hour = min(23, game_hour + hours_after)
+
+        total_precipitation = 0.0
+
+        for hour in range(start_hour, end_hour + 1):
+            if hour < len(precips):
+                precipitation = precips[hour] or 0.0
+            else:
+                precipitation = 0.0
+
+            total_precipitation += precipitation
+
+            # 상대 시간 계산
+            relative_hours = hour - game_hour
+            if relative_hours == 0:
+                relative_time = "경기 시작"
+                is_game_time = True
+            elif relative_hours < 0:
+                relative_time = f"경기 {abs(relative_hours)}시간 전"
+                is_game_time = False
+            else:
+                relative_time = f"경기 {relative_hours}시간 후"
+                is_game_time = False
+
+            # 시간 라벨 생성
+            time_label = f"{hour:02d}:00"
+
+            timeline.append({
+                "hour": hour,
+                "time_label": time_label,
+                "precipitation": round(precipitation, 1),
+                "is_game_time": is_game_time,
+                "relative_time": relative_time
+            })
+
+        logger.info(
+            f"[WEATHER_TIMELINE] stadium={stadium}, date={game_date}, "
+            f"game_hour={game_hour}, points={len(timeline)}, "
+            f"total_precip={round(total_precipitation, 1)}mm"
+        )
+
+        return {
+            "timeline": timeline,
+            "total_precipitation": round(total_precipitation, 1),
+            "data_source": "forecast" if is_forecast else "historical"
+        }
+
 
 # 싱글톤 인스턴스
 weather_service = WeatherService()

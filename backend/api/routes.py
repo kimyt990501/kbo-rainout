@@ -18,6 +18,8 @@ from schemas.prediction import (
     StadiumListResponse,
     WeatherRequest,
     WeatherResponse,
+    WeatherTimelineRequest,
+    WeatherTimelineResponse,
 )
 from services.weather import weather_service
 
@@ -280,4 +282,68 @@ async def get_weather(weather_request: WeatherRequest) -> WeatherResponse:
         raise HTTPException(
             status_code=500,
             detail="날씨 데이터 조회 중 오류가 발생했습니다."
+        )
+
+
+@router.post("/weather/timeline", response_model=WeatherTimelineResponse)
+async def get_weather_timeline(
+    timeline_request: WeatherTimelineRequest
+) -> WeatherTimelineResponse:
+    """
+    날씨 타임라인 조회 엔드포인트
+
+    경기 시간 전후의 시간대별 강수량 데이터를 조회합니다.
+
+    - **stadium**: 구장 ID
+    - **game_date**: 경기 날짜 (YYYY-MM-DD 형식)
+    - **game_hour**: 경기 시작 시간 (0-23, 기본값 18시)
+    - **hours_before**: 경기 전 몇 시간부터 조회할지 (기본값 3시간)
+    - **hours_after**: 경기 후 몇 시간까지 조회할지 (기본값 3시간)
+    """
+    stadium_id = timeline_request.stadium
+    game_date = timeline_request.game_date
+    game_hour = timeline_request.game_hour
+    hours_before = timeline_request.hours_before
+    hours_after = timeline_request.hours_after
+
+    # 구장 정보 확인
+    stadium_config = STADIUM_MODELS.get(stadium_id)
+    if not stadium_config:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{stadium_id} 구장은 지원하지 않습니다."
+        )
+
+    logger.info(
+        f"[TIMELINE] 타임라인 조회 요청: stadium={stadium_id}, "
+        f"date={game_date}, hour={game_hour}, "
+        f"before={hours_before}h, after={hours_after}h"
+    )
+
+    try:
+        # 타임라인 데이터 조회
+        timeline_data = await weather_service.get_weather_timeline(
+            stadium=stadium_id,
+            game_date=game_date,
+            game_hour=game_hour,
+            hours_before=hours_before,
+            hours_after=hours_after
+        )
+
+        return WeatherTimelineResponse(
+            stadium=stadium_id,
+            stadium_name=stadium_config["name"],
+            game_date=game_date,
+            game_hour=game_hour,
+            **timeline_data
+        )
+
+    except ValueError as e:
+        logger.error(f"타임라인 조회 요청 오류: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"타임라인 조회 중 오류 발생: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="타임라인 데이터 조회 중 오류가 발생했습니다."
         )
