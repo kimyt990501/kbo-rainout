@@ -19,7 +19,7 @@
     <div class="ticket-body">
       <!-- 로딩 상태 -->
       <div v-if="loading" class="loading-state">
-        <div class="loading-spinner"></div>
+        <LoadingSpinner size="lg" />
         <p>AI가 분석 중입니다...</p>
       </div>
 
@@ -96,6 +96,7 @@
 import { computed } from 'vue'
 import WeatherIcon from './WeatherIcon.vue'
 import TeamLogo from './TeamLogo.vue'
+import LoadingSpinner from './LoadingSpinner.vue'
 import { getStatusClass, PROBABILITY_THRESHOLDS } from '@/constants/probability'
 
 interface Team {
@@ -221,16 +222,10 @@ const verdictText = computed(() => {
 /* Loading State */
 .loading-state {
   text-align: center;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(44, 62, 80, 0.2);
-  border-top-color: var(--sky-blue);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 .loading-state p {

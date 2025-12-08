@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { PredictionRequest, PredictionResponse } from '@/api/types'
 import { predictRainCancellation } from '@/api/client'
+import { extractErrorMessage, logError } from '@/utils/errors'
 
 export const usePredictionStore = defineStore('prediction', () => {
   // State
@@ -18,13 +19,8 @@ export const usePredictionStore = defineStore('prediction', () => {
     try {
       lastPrediction.value = await predictRainCancellation(payload)
     } catch (e: unknown) {
-      if (e && typeof e === 'object' && 'response' in e) {
-        const axiosError = e as { response?: { data?: { detail?: string } } }
-        error.value = axiosError.response?.data?.detail || '예측 요청에 실패했습니다.'
-      } else {
-        error.value = '예측 요청에 실패했습니다.'
-      }
-      console.error('Prediction failed:', e)
+      error.value = extractErrorMessage(e, '예측 요청에 실패했습니다.')
+      logError(e, 'Prediction')
     } finally {
       loading.value = false
     }

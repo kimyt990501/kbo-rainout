@@ -68,12 +68,15 @@ import { geoPath, geoMercator } from 'd3-geo'
 import StadiumMarker from './StadiumMarker.vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 import { getStadiumMapPosition } from '@/constants/stadiums'
+import type { GeoJSONFeatureCollection, ProvincePath, KoreaProvinceProperties } from '@/types/geo'
+import { KOREA_MAP_CONFIG } from '@/types/geo'
+import { logError } from '@/utils/errors'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
 
 const activeStadium = ref<string | null>(null)
-const provincesPaths = ref<Array<{ name: string; path: string }>>([])
+const provincesPaths = ref<ProvincePath[]>([])
 
 const emit = defineEmits<{
   (e: 'select-stadium', stadiumId: string): void
@@ -84,23 +87,23 @@ const emit = defineEmits<{
 onMounted(async () => {
   try {
     const response = await fetch('/skorea-provinces.json')
-    const geojson = await response.json()
+    const geojson = await response.json() as GeoJSONFeatureCollection<KoreaProvinceProperties>
 
     // Mercator 투영 설정 (대한민국 중심)
     const projection = geoMercator()
-      .center([127.5, 36.5])  // 대한민국 중심 경도, 위도
-      .scale(8000)            // 스케일 조정
-      .translate([400, 450])  // SVG 중심으로 이동
+      .center(KOREA_MAP_CONFIG.center)
+      .scale(KOREA_MAP_CONFIG.scale)
+      .translate(KOREA_MAP_CONFIG.translate)
 
     const pathGenerator = geoPath().projection(projection)
 
     // 각 시도를 SVG path로 변환
-    provincesPaths.value = geojson.features.map((feature: any) => ({
+    provincesPaths.value = geojson.features.map((feature) => ({
       name: feature.properties.NAME_1 || feature.properties.name || 'Unknown',
       path: pathGenerator(feature) || ''
     }))
   } catch (error) {
-    console.error('지도 로딩 실패:', error)
+    logError(error, 'Map Loading')
   }
 })
 

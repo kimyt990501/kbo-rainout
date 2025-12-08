@@ -44,7 +44,7 @@
       :disabled="weatherLoading"
       class="btn btn-secondary fetch-btn"
     >
-      <span v-if="weatherLoading" class="spinner"></span>
+      <LoadingSpinner v-if="weatherLoading" size="sm" />
       <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
       </svg>
@@ -153,7 +153,7 @@
       :disabled="predictionLoading || !canPredict"
       class="btn btn-primary predict-btn"
     >
-      <span v-if="predictionLoading" class="spinner"></span>
+      <LoadingSpinner v-if="predictionLoading" size="sm" />
       <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
       </svg>
@@ -168,6 +168,8 @@ import { useStadiumStore, usePredictionStore } from '@/store'
 import { getWeather } from '@/api/client'
 import type { WeatherResponse } from '@/api/types'
 import { GAME_TIME_OPTIONS, DEFAULT_GAME_TIME, getTodayDate, getMinDate, getMaxDate } from '@/constants/gameTime'
+import { extractErrorMessage, logError } from '@/utils/errors'
+import LoadingSpinner from './LoadingSpinner.vue'
 
 const stadiumStore = useStadiumStore()
 const predictionStore = usePredictionStore()
@@ -229,12 +231,8 @@ async function fetchWeather() {
       dayofweek: weatherData.value.dayofweek
     })
   } catch (e: unknown) {
-    if (e && typeof e === 'object' && 'response' in e) {
-      const axiosError = e as { response?: { data?: { detail?: string } } }
-      weatherError.value = axiosError.response?.data?.detail || '날씨 데이터를 불러오는데 실패했습니다.'
-    } else {
-      weatherError.value = '날씨 데이터를 불러오는데 실패했습니다.'
-    }
+    weatherError.value = extractErrorMessage(e, '날씨 데이터를 불러오는데 실패했습니다.')
+    logError(e, 'Weather Fetch')
   } finally {
     weatherLoading.value = false
   }
