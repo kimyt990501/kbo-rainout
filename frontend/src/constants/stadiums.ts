@@ -117,13 +117,38 @@ export function getStadiumCoordinates(stadiumId: string): { lat: number; lng: nu
 
 /**
  * 경기장별 배경 그라데이션 (App.vue용)
+ * 각 구장의 홈 팀 시그니처 색상 기반
  */
 export const STADIUM_BACKGROUNDS = {
-  jamsil: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  daegu: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  suwon: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  incheon: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-  default: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  // 잠실: LG/두산 공용 구장 - 중립 색상
+  jamsil: 'linear-gradient(135deg, #1a365d 0%, #2d4a7c 50%, #1e3a5f 100%)',
+
+  // 대구: 삼성 라이온즈 - 블루 계열
+  daegu: 'linear-gradient(135deg, #074CA1 0%, #0a5dc2 50%, #063d81 100%)',
+
+  // 수원: KT 위즈 - 블랙 계열
+  suwon: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+
+  // 인천: SSG 랜더스 - 레드 계열
+  incheon: 'linear-gradient(135deg, #8B0000 0%, #a52a2a 50%, #6b0000 100%)',
+
+  // 사직: 롯데 자이언츠 - 네이비 계열
+  sajik: 'linear-gradient(135deg, #002955 0%, #003d7a 50%, #001f3f 100%)',
+
+  // 광주: KIA 타이거즈 - 레드 계열
+  gwangju: 'linear-gradient(135deg, #EA0029 0%, #ff1a47 50%, #c30024 100%)',
+
+  // 대전: 한화 이글스 - 오렌지 계열
+  daejeon: 'linear-gradient(135deg, #FF6600 0%, #ff8533 50%, #cc5200 100%)',
+
+  // 창원: NC 다이노스 - 블루/골드 계열
+  changwon: 'linear-gradient(135deg, #315288 0%, #4a6fa5 50%, #1e3a5f 100%)',
+
+  // 고척: 키움 히어로즈 - 버건디 계열
+  gocheok: 'linear-gradient(135deg, #820024 0%, #a50030 50%, #5d001a 100%)',
+
+  // 기본값 (중립)
+  default: 'linear-gradient(135deg, #1a365d 0%, #2d4a7c 50%, #1e3a5f 100%)',
 } as const
 
 /**
