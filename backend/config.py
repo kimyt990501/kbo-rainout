@@ -84,55 +84,6 @@ STADIUM_MODELS = {
         "team": "NC",
         "coordinates": (35.2225, 128.5822),
     },
-    # 향후 추가 예정:
-    # "sajik": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_sajik.pkl",
-    #     "name": "사직야구장",
-    #     "team": "롯데",
-    #     "coordinates": (35.1940, 129.0616),
-    # },
-    # "munhak": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_munhak.pkl",
-    #     "name": "문학야구장",
-    #     "team": "SSG",
-    #     "coordinates": (37.4370, 126.6933),
-    # },
-    # "gwangju": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_gwangju.pkl",
-    #     "name": "광주챔피언스필드",
-    #     "team": "KIA",
-    #     "coordinates": (35.1681, 126.8891),
-    # },
-    # "daegu": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_daegu.pkl",
-    #     "name": "대구삼성라이온즈파크",
-    #     "team": "삼성",
-    #     "coordinates": (35.8411, 128.6816),
-    # },
-    # "daejeon": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_daejeon.pkl",
-    #     "name": "한화생명이글스파크",
-    #     "team": "한화",
-    #     "coordinates": (36.3170, 127.4291),
-    # },
-    # "suwon": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_suwon.pkl",
-    #     "name": "수원KT위즈파크",
-    #     "team": "KT",
-    #     "coordinates": (37.2997, 127.0097),
-    # },
-    # "changwon": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_changwon.pkl",
-    #     "name": "창원NC파크",
-    #     "team": "NC",
-    #     "coordinates": (35.2225, 128.5822),
-    # },
-    # "gocheok": {
-    #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_gocheok.pkl",
-    #     "name": "고척스카이돔",
-    #     "team": "키움",
-    #     "coordinates": (37.4982, 126.8672),
-    # },
 }
 
 # 지원 구장 목록 (자동 생성)
