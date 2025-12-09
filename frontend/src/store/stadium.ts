@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Stadium, ModelInfo } from '@/api/types'
 import { getStadiums, getModelInfo } from '@/api/client'
+import { usePredictionStore } from './prediction'
 
 export const useStadiumStore = defineStore('stadium', () => {
   // State
@@ -59,6 +60,10 @@ export const useStadiumStore = defineStore('stadium', () => {
   function setStadium(stadiumId: string) {
     currentStadium.value = stadiumId
     fetchModelInfo()
+
+    // 구장 변경 시 이전 예측 결과 초기화
+    const predictionStore = usePredictionStore()
+    predictionStore.clearPrediction()
   }
 
   return {

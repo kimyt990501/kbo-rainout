@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useStadiumStore, usePredictionStore } from '@/store'
 import MatchTicket from '@/components/MatchTicket.vue'
 import KoreaMapDashboard from '@/components/KoreaMapDashboard.vue'
@@ -163,6 +163,12 @@ const predictionText = computed(() =>
 function handleStadiumFromMap(stadiumId: string) {
   stadiumStore.setStadium(stadiumId)
 }
+
+// 구장 변경 시 타임라인 초기화
+watch(() => stadiumStore.currentStadium, () => {
+  timelineData.value = null
+  showScrollIndicator.value = true
+})
 </script>
 
 <style scoped>
