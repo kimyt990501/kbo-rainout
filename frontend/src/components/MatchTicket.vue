@@ -84,7 +84,7 @@
       </div>
 
       <!-- 타임라인 보기 버튼 -->
-      <button v-if="hasResult && showTimelineButton" class="timeline-button" @click="$emit('scrollToTimeline')">
+      <!-- <button v-if="hasResult && showTimelineButton" class="timeline-button" @click="$emit('scrollToTimeline')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
         </svg>
@@ -92,7 +92,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
-      </button>
+      </button> -->
     </div>
   </div>
 </template>

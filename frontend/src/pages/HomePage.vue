@@ -41,8 +41,13 @@
 
       <!-- 스크롤 인디케이터 -->
       <div v-if="timelineData && showScrollIndicator" class="scroll-indicator" @click="scrollToTimeline">
-        <span class="scroll-text">시간대별 강수량 보기</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="scroll-content">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          </svg>
+          <span class="scroll-text">시간대별 강수량 보기</span>
+        </div>
+        <svg class="scroll-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </div>
@@ -298,48 +303,68 @@ function handleStadiumFromMap(stadiumId: string) {
 /* 스크롤 인디케이터 */
 .scroll-indicator {
   position: fixed;
-  bottom: var(--space-6);
+  bottom: var(--space-8);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  background: linear-gradient(135deg, rgba(52, 152, 219, 0.95), rgba(41, 128, 185, 0.95));
-  backdrop-filter: blur(10px);
-  border-radius: var(--radius-full);
-  box-shadow: 0 4px 20px rgba(52, 152, 219, 0.4);
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-width: 220px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12),
+              0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
-  animation: fadeInBounce 0.6s ease-out;
+  animation: slideUpFade 0.5s ease-out;
 }
 
 .scroll-indicator:hover {
-  transform: translateX(-50%) translateY(-4px);
-  box-shadow: 0 6px 25px rgba(52, 152, 219, 0.6);
+  transform: translateX(-50%) translateY(-6px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16),
+              0 4px 12px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 1);
+}
+
+.scroll-indicator:active {
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.scroll-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.scroll-content svg {
+  color: #3498db;
+  flex-shrink: 0;
 }
 
 .scroll-text {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--white);
+  color: var(--night-black);
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
-.scroll-indicator svg {
-  color: var(--white);
-  animation: bounce 2s infinite;
+.scroll-arrow {
+  color: #3498db;
+  flex-shrink: 0;
+  animation: bounceArrow 2s ease-in-out infinite;
 }
 
-@keyframes fadeInBounce {
+@keyframes slideUpFade {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  50% {
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateX(-50%) translateY(30px);
   }
   100% {
     opacity: 1;
@@ -347,15 +372,15 @@ function handleStadiumFromMap(stadiumId: string) {
   }
 }
 
-@keyframes bounce {
+@keyframes bounceArrow {
   0%, 20%, 50%, 80%, 100% {
     transform: translateY(0);
   }
   40% {
-    transform: translateY(-6px);
+    transform: translateY(-4px);
   }
   60% {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
   }
 }
 
@@ -413,12 +438,24 @@ function handleStadiumFromMap(stadiumId: string) {
   }
 
   .scroll-indicator {
-    bottom: var(--space-4);
-    padding: var(--space-2) var(--space-4);
+    bottom: var(--space-5);
+    padding: var(--space-2) var(--space-3);
+    min-width: 200px;
+    gap: var(--space-2);
   }
 
   .scroll-text {
     font-size: var(--font-size-xs);
+  }
+
+  .scroll-content svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .scroll-arrow {
+    width: 14px;
+    height: 14px;
   }
 }
 </style>
