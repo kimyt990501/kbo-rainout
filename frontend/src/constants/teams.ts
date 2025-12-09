@@ -114,7 +114,7 @@ export const STADIUM_HOME_TEAMS = {
   incheon: 'ssg',
   suwon: 'kt',
   daegu: 'samsung',
-  sajik: 'lotte',
+  busan: 'lotte',
   gwangju: 'kia',
   daejeon: 'hanwha',
   changwon: 'nc',

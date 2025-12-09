@@ -50,8 +50,8 @@ export const STADIUMS = {
     coordinates: { lat: 35.8411, lng: 128.6818 },
     mapPosition: { x: 72, y: 52 },
   },
-  sajik: {
-    id: 'sajik',
+  busan: {
+    id: 'busan',
     name: '사직 야구장',
     team: '롯데 자이언츠',
     city: '부산',
@@ -133,7 +133,7 @@ export const STADIUM_BACKGROUNDS = {
   incheon: 'linear-gradient(135deg, #8B0000 0%, #a52a2a 50%, #6b0000 100%)',
 
   // 사직: 롯데 자이언츠 - 네이비 계열
-  sajik: 'linear-gradient(135deg, #002955 0%, #003d7a 50%, #001f3f 100%)',
+  busan: 'linear-gradient(135deg, #002955 0%, #003d7a 50%, #001f3f 100%)',
 
   // 광주: KIA 타이거즈 - 레드 계열
   gwangju: 'linear-gradient(135deg, #EA0029 0%, #ff1a47 50%, #c30024 100%)',
