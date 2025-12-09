@@ -78,6 +78,12 @@ STADIUM_MODELS = {
         "team": "롯데",
         "coordinates": (35.1940, 129.0616),
     },
+    "changwon": {
+        "path": MODEL_DIR / "kbo_changwon_model.pkl",
+        "name": "창원NC파크",
+        "team": "NC",
+        "coordinates": (35.2225, 128.5822),
+    },
     # 향후 추가 예정:
     # "sajik": {
     #     "path": PROJECT_ROOT / "models" / "kbo_rain_model_sajik.pkl",
