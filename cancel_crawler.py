@@ -50,10 +50,15 @@ def crawl_kbo_schedule(years, months, stadium_id):
     """
     # 구장 설정 가져오기
     stadium_config = get_stadium_config(stadium_id)
-    target_keyword = stadium_config["search_keyword"]
+    search_keyword = stadium_config["search_keyword"]
+    # 리스트로 통일 (하위 호환성)
+    if isinstance(search_keyword, str):
+        target_keywords = [search_keyword]
+    else:
+        target_keywords = search_keyword
     stadium_name = stadium_config["name"]
 
-    print(f"\n대상 구장: {stadium_name} (검색어: '{target_keyword}')")
+    print(f"\n대상 구장: {stadium_name} (검색어: {target_keywords})")
 
     # Chrome 옵션 설정
     chrome_options = Options()
@@ -209,8 +214,8 @@ def crawl_kbo_schedule(years, months, stadium_id):
                     note_idx = 8 + offset
                     note = cells[note_idx].get_text(strip=True) if len(cells) > note_idx else ""
 
-                    # 대상 구장 필터링
-                    if target_keyword and target_keyword not in stadium:
+                    # 대상 구장 필터링 (여러 키워드 중 하나라도 포함되면 매칭)
+                    if target_keywords and not any(kw in stadium for kw in target_keywords):
                         continue
 
                     # 전체 행 텍스트
@@ -276,7 +281,7 @@ def crawl_kbo_schedule(years, months, stadium_id):
     return all_games, cancelled_games
 
 
-def save_results(all_games, cancelled_games, stadium_id):
+def save_results(all_games, cancelled_games, stadium_id, append=False):
     """
     결과를 CSV 파일로 저장
 
@@ -284,21 +289,43 @@ def save_results(all_games, cancelled_games, stadium_id):
         all_games: 전체 경기 리스트
         cancelled_games: 취소 경기 리스트
         stadium_id: 구장 ID
+        append: True면 기존 데이터에 추가, False면 덮어쓰기
     """
     paths = get_data_paths(stadium_id)
     stadium_config = get_stadium_config(stadium_id)
     stadium_name = stadium_config["name"]
 
     if all_games:
-        df_all = pd.DataFrame(all_games)
+        df_new = pd.DataFrame(all_games)
         all_path = paths["all_games"]
         all_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if append and all_path.exists():
+            # 기존 데이터 로드 후 병합
+            df_existing = pd.read_csv(all_path)
+            df_all = pd.concat([df_existing, df_new], ignore_index=True)
+            # 중복 제거 (날짜 + 홈팀 + 원정팀 기준)
+            df_all = df_all.drop_duplicates(subset=["date", "home", "away"], keep="last")
+            df_all = df_all.sort_values("date").reset_index(drop=True)
+            print(f"\n[APPEND 모드] 기존 {len(df_existing)}개 + 신규 {len(df_new)}개 = 총 {len(df_all)}개")
+        else:
+            df_all = df_new
+        
         df_all.to_csv(all_path, index=False, encoding="utf-8-sig")
-        print(f"\n전체 경기 저장: {all_path} ({len(df_all)}개)")
+        print(f"전체 경기 저장: {all_path} ({len(df_all)}개)")
 
     if cancelled_games:
-        df_cancelled = pd.DataFrame(cancelled_games)
+        df_cancelled_new = pd.DataFrame(cancelled_games)
         cancelled_path = paths["cancelled"]
+        
+        if append and cancelled_path.exists():
+            df_existing = pd.read_csv(cancelled_path)
+            df_cancelled = pd.concat([df_existing, df_cancelled_new], ignore_index=True)
+            df_cancelled = df_cancelled.drop_duplicates(subset=["date", "home", "away"], keep="last")
+            df_cancelled = df_cancelled.sort_values("date").reset_index(drop=True)
+        else:
+            df_cancelled = df_cancelled_new
+        
         df_cancelled.to_csv(cancelled_path, index=False, encoding="utf-8-sig")
         print(f"취소 경기 저장: {cancelled_path} ({len(df_cancelled)}개)")
 
@@ -316,7 +343,7 @@ def save_results(all_games, cancelled_games, stadium_id):
         print(f"\n{stadium_name}: 취소된 경기가 없습니다.")
 
 
-def crawl_stadium(stadium_id, years=None, months=None):
+def crawl_stadium(stadium_id, years=None, months=None, append=False):
     """
     특정 구장의 데이터 수집
 
@@ -324,6 +351,7 @@ def crawl_stadium(stadium_id, years=None, months=None):
         stadium_id: 구장 ID
         years: 연도 리스트 (기본값: DEFAULT_YEARS)
         months: 월 리스트 (기본값: DEFAULT_MONTHS)
+        append: True면 기존 데이터에 추가
 
     Returns:
         tuple: (전체 경기 리스트, 취소 경기 리스트)
@@ -336,6 +364,8 @@ def crawl_stadium(stadium_id, years=None, months=None):
 
     print("=" * 60)
     print(f"KBO {stadium_name} 경기 데이터 수집기")
+    if append:
+        print("[APPEND 모드] 기존 데이터에 추가합니다.")
     print("=" * 60)
 
     print(f"\n수집 대상: {years[0]}~{years[-1]}년")
@@ -346,7 +376,7 @@ def crawl_stadium(stadium_id, years=None, months=None):
         years=years, months=months, stadium_id=stadium_id
     )
 
-    save_results(all_games, cancelled_games, stadium_id)
+    save_results(all_games, cancelled_games, stadium_id, append=append)
 
     print("\n" + "=" * 60)
     print(f"{stadium_name} 수집 완료!")
@@ -467,6 +497,11 @@ def main():
         action="store_true",
         help="지원 구장 목록 출력",
     )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="기존 데이터에 추가 (덮어쓰기 대신 병합)",
+    )
 
     args = parser.parse_args()
 
@@ -484,7 +519,7 @@ def main():
 
     # 특정 구장 수집
     stadium_id = args.stadium or DEFAULT_STADIUM
-    crawl_stadium(stadium_id, years=args.years, months=args.months)
+    crawl_stadium(stadium_id, years=args.years, months=args.months, append=args.append)
 
 
 if __name__ == "__main__":

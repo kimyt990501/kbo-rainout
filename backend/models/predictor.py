@@ -148,6 +148,7 @@ class MultiStadiumPredictor:
         Returns:
             피처 DataFrame
         """
+        # 기본 피처
         data = {
             "daily_precip_sum": [request.daily_precip_sum],
             "daily_precip_hours": [request.daily_precip_hours],
@@ -162,7 +163,40 @@ class MultiStadiumPredictor:
             "dayofweek": [request.dayofweek],
         }
 
+        # 파생 피처 계산 (새 모델용)
+        # is_weekend: 주말 여부 (토=5, 일=6)
+        data["is_weekend"] = [1 if request.dayofweek >= 5 else 0]
+        
+        # is_rainy_season: 장마철 여부 (7, 8월)
+        data["is_rainy_season"] = [1 if request.month in [7, 8] else 0]
+        
+        # game_hour: 경기 시간 (기본값 18시)
+        data["game_hour"] = [getattr(request, 'game_hour', 18)]
+        
+        # precip_intensity: 강수 강도
+        daily_precip_hours = max(request.daily_precip_hours, 1)
+        data["precip_intensity"] = [request.daily_precip_sum / daily_precip_hours]
+        
+        # humidity_precip_interaction: 습도와 강수량 상호작용
+        data["humidity_precip_interaction"] = [
+            request.pre_game_humidity * request.pre_game_precip / 100
+        ]
+        
+        # cumulative_precip_2days: 2일 누적 강수량
+        data["cumulative_precip_2days"] = [
+            request.daily_precip_sum + request.prev_day_precip
+        ]
+        
+        # ground_condition_score: 그라운드 상태 점수
+        data["ground_condition_score"] = [
+            request.prev_day_precip * 0.3 + 
+            request.pre_game_precip * 0.5 + 
+            request.pre_game_humidity * 0.2
+        ]
+
         df = pd.DataFrame(data)
+        
+        # 모델이 요구하는 피처만 선택 (순서 맞춤)
         return df[feature_cols]
 
     def _analyze_risk_factors(self, request: PredictionRequest) -> List[str]:

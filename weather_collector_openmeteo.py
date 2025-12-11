@@ -205,11 +205,11 @@ def collect_weather_data(games_df, lat, lon):
 
     print(f"\n총 {total}개 경기 날씨 데이터 수집 시작...\n")
 
-    for idx, row in games_df.iterrows():
+    for i, (idx, row) in enumerate(games_df.iterrows()):
         date = row["date"]
         game_hour = parse_game_time(row.get("time", "18:00"))
 
-        print(f"[{idx+1}/{total}] {date} ({row.get('time', '')}) ", end="")
+        print(f"[{i+1}/{total}] {date} ({row.get('time', '')}) ", end="")
 
         weather = get_weather_for_date(date, lat, lon, game_hour)
 
@@ -232,12 +232,13 @@ def collect_weather_data(games_df, lat, lon):
     return pd.DataFrame(results)
 
 
-def collect_stadium_weather(stadium_id):
+def collect_stadium_weather(stadium_id, append=False):
     """
     특정 구장의 날씨 데이터 수집
 
     Args:
         stadium_id: 구장 ID
+        append: True면 기존 데이터에 신규 데이터만 추가
 
     Returns:
         DataFrame: 날씨 포함 경기 데이터
@@ -249,6 +250,8 @@ def collect_stadium_weather(stadium_id):
 
     print("=" * 60)
     print(f"KBO {stadium_name} 날씨 데이터 수집기 (Open-Meteo)")
+    if append:
+        print("[APPEND 모드] 신규 경기만 날씨 수집 후 병합합니다.")
     print("=" * 60)
     print("\n• API 키 불필요")
     print(f"• {stadium_name} 좌표 기준")
@@ -265,18 +268,41 @@ def collect_stadium_weather(stadium_id):
     games_df = pd.read_csv(games_file)
     print(f"총 {len(games_df)}개 경기")
 
-    # 날씨 데이터 수집
-    print("\n" + "=" * 60)
-    weather_df = collect_weather_data(games_df, lat, lon)
-
-    # 원본 데이터와 병합
-    result_df = games_df.merge(weather_df, on="date", how="left")
+    output_file = paths["with_weather"]
+    
+    if append and output_file.exists():
+        # 기존 with_weather 데이터 로드
+        existing_df = pd.read_csv(output_file)
+        existing_dates = set(existing_df["date"].unique())
+        
+        # 신규 경기만 필터링 (날씨 데이터가 없는 경기)
+        new_games_df = games_df[~games_df["date"].isin(existing_dates)]
+        
+        if len(new_games_df) == 0:
+            print(f"\n[스킵] 신규 경기가 없습니다. 기존 데이터 유지.")
+            return existing_df
+        
+        print(f"\n[APPEND 모드] 기존 {len(existing_df)}개, 신규 {len(new_games_df)}개 경기 날씨 수집")
+        
+        # 신규 경기만 날씨 수집
+        print("\n" + "=" * 60)
+        weather_df = collect_weather_data(new_games_df, lat, lon)
+        new_result_df = new_games_df.merge(weather_df, on="date", how="left")
+        
+        # 기존 데이터와 병합
+        result_df = pd.concat([existing_df, new_result_df], ignore_index=True)
+        result_df = result_df.drop_duplicates(subset=["date", "home", "away"], keep="last")
+        result_df = result_df.sort_values("date").reset_index(drop=True)
+    else:
+        # 전체 날씨 수집
+        print("\n" + "=" * 60)
+        weather_df = collect_weather_data(games_df, lat, lon)
+        result_df = games_df.merge(weather_df, on="date", how="left")
 
     # 결과 저장
-    output_file = paths["with_weather"]
     output_file.parent.mkdir(parents=True, exist_ok=True)
     result_df.to_csv(output_file, index=False, encoding="utf-8-sig")
-    print(f"\n저장 완료: {output_file}")
+    print(f"\n저장 완료: {output_file} ({len(result_df)}개)")
 
     # 요약 통계
     print_weather_summary(result_df, stadium_name)
@@ -401,6 +427,11 @@ def main():
         action="store_true",
         help="지원 구장 목록 출력",
     )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="기존 데이터에 신규 경기만 추가 (들어쓰기 대신 병합)",
+    )
 
     args = parser.parse_args()
 
@@ -418,7 +449,7 @@ def main():
 
     # 특정 구장 수집
     stadium_id = args.stadium or DEFAULT_STADIUM
-    collect_stadium_weather(stadium_id)
+    collect_stadium_weather(stadium_id, append=args.append)
 
 
 if __name__ == "__main__":

@@ -33,6 +33,14 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 import warnings
 
+# Optuna for hyperparameter tuning
+try:
+    import optuna
+    from optuna.samplers import TPESampler
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
+
 warnings.filterwarnings("ignore")
 
 from stadium_config import (
@@ -165,6 +173,17 @@ def perform_eda(df, stadium_id, stadium_name):
 
 
 # ============================================
+# 헬퍼 함수
+# ============================================
+def parse_game_hour(time_str):
+    """경기 시간에서 시간 추출"""
+    try:
+        return int(str(time_str).split(":")[0])
+    except:
+        return 18  # 기본값
+
+
+# ============================================
 # 3. 데이터 전처리
 # ============================================
 def preprocess_data(df, stadium_name):
@@ -177,8 +196,8 @@ def preprocess_data(df, stadium_name):
     df_model = df[df["reason"].isin(["우천취소", "정상진행"])].copy()
     df_model["is_cancelled"] = (df_model["reason"] == "우천취소").astype(int)
 
-    # 피처 선택
-    feature_cols = [
+    # 기본 피처
+    base_feature_cols = [
         "daily_precip_sum",  # 일 강수량
         "daily_precip_hours",  # 강수 시간
         "pre_game_precip",  # 경기 전 강수량
@@ -194,7 +213,51 @@ def preprocess_data(df, stadium_name):
     df_model["month"] = pd.to_datetime(df_model["date"]).dt.month
     df_model["dayofweek"] = pd.to_datetime(df_model["date"]).dt.dayofweek
 
-    feature_cols.extend(["month", "dayofweek"])
+    # ========================================
+    # 신규 파생 피처 생성
+    # ========================================
+    # 1. 주말 여부 (토=5, 일=6)
+    df_model["is_weekend"] = (df_model["dayofweek"] >= 5).astype(int)
+
+    # 2. 장마철 여부 (7-8월)
+    df_model["is_rainy_season"] = df_model["month"].apply(lambda x: 1 if x in [7, 8] else 0)
+
+    # 3. 경기 시작 시간
+    df_model["game_hour"] = df_model["time"].apply(parse_game_hour)
+
+    # 4. 강수 강도 (mm/시간) - 0으로 나누기 방지
+    df_model["precip_intensity"] = df_model["daily_precip_sum"] / df_model["daily_precip_hours"].replace(0, 1)
+
+    # 5. 습도 × 강수량 상호작용
+    df_model["humidity_precip_interaction"] = (
+        df_model["pre_game_humidity"].fillna(50) * df_model["pre_game_precip"].fillna(0) / 100
+    )
+
+    # 6. 2일 누적 강수량
+    df_model["cumulative_precip_2days"] = (
+        df_model["daily_precip_sum"].fillna(0) + df_model["prev_day_precip"].fillna(0)
+    )
+
+    # 7. 그라운드 상태 점수 (높을수록 취소 위험)
+    df_model["ground_condition_score"] = (
+        df_model["prev_day_precip"].fillna(0) * 0.5 +
+        df_model["pre_game_precip"].fillna(0) * 0.3 +
+        (df_model["pre_game_humidity"].fillna(50) - 50) * 0.02
+    )
+
+    # 전체 피처 목록
+    feature_cols = base_feature_cols + [
+        "month",
+        "dayofweek",
+        # 신규 파생 피처
+        "is_weekend",
+        "is_rainy_season",
+        "game_hour",
+        "precip_intensity",
+        "humidity_precip_interaction",
+        "cumulative_precip_2days",
+        "ground_condition_score",
+    ]
 
     # 결측치 처리
     X = df_model[feature_cols].copy()
@@ -203,8 +266,12 @@ def preprocess_data(df, stadium_name):
     # 결측치를 0으로 채움 (강수량 관련)
     X = X.fillna(0)
 
-    print(f"\n피처 수: {len(feature_cols)}")
+    print(f"\n피처 수: {len(feature_cols)} (기존 11개 + 신규 7개)")
     print(f"피처 목록: {feature_cols}")
+    print(f"\n신규 파생 피처:")
+    print(f"  - is_weekend, is_rainy_season, game_hour")
+    print(f"  - precip_intensity, humidity_precip_interaction")
+    print(f"  - cumulative_precip_2days, ground_condition_score")
     print(f"\n데이터 shape: X={X.shape}, y={y.shape}")
     print(f"클래스 분포: 정상={sum(y==0)}, 취소={sum(y==1)}")
 
@@ -214,8 +281,18 @@ def preprocess_data(df, stadium_name):
 # ============================================
 # 4. 모델 학습 및 평가
 # ============================================
-def train_and_evaluate(X, y, feature_cols, stadium_name):
-    """여러 모델 학습 및 비교"""
+def train_and_evaluate(X, y, feature_cols, stadium_name, df_dates=None, temporal_split=False):
+    """
+    여러 모델 학습 및 비교
+    
+    Args:
+        X: 피처 데이터
+        y: 타겟 데이터
+        feature_cols: 피처 컨럼 목록
+        stadium_name: 구장명
+        df_dates: 날짜 시리즈 (temporal split 용)
+        temporal_split: True면 2025년 데이터를 테스트셋으로 사용
+    """
     print("\n" + "=" * 60)
     print(f"4. 모델 학습 및 평가 - {stadium_name}")
     print("=" * 60)
@@ -227,11 +304,28 @@ def train_and_evaluate(X, y, feature_cols, stadium_name):
         return None, None, None, None, None
 
     # 데이터 분할
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+    if temporal_split and df_dates is not None:
+        # Temporal Split: 2025년 데이터를 테스트셋으로 사용
+        years = pd.to_datetime(df_dates).dt.year
+        train_mask = years < 2025
+        test_mask = years >= 2025
+        
+        X_train, X_test = X[train_mask], X[test_mask]
+        y_train, y_test = y[train_mask], y[test_mask]
+        
+        print(f"\n[테스트 방식] Temporal Split (2019-2024 학습, 2025 테스트)")
+        
+        if len(X_test) == 0:
+            print("\n[오류] 2025년 데이터가 없습니다. --temporal 없이 실행하세요.")
+            return None, None, None, None, None
+    else:
+        # Random Split (기존 방식)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+        print(f"\n[테스트 방식] Random Split (80% 학습, 20% 테스트)")
 
-    print(f"\n학습 데이터: {len(X_train)}개 (취소: {sum(y_train)}개)")
+    print(f"학습 데이터: {len(X_train)}개 (취소: {sum(y_train)}개)")
     print(f"테스트 데이터: {len(X_test)}개 (취소: {sum(y_test)}개)")
 
     # 클래스 불균형 처리를 위한 가중치 계산
@@ -332,6 +426,127 @@ def train_and_evaluate(X, y, feature_cols, stadium_name):
 
 
 # ============================================
+# 4-1. Optuna 하이퍼파라미터 튜닝
+# ============================================
+def tune_with_optuna(X_train, y_train, scale_pos_weight, n_trials=50):
+    """
+    Optuna를 사용한 하이퍼파라미터 튜닝
+    
+    Args:
+        X_train: 학습 피처
+        y_train: 학습 타겟
+        scale_pos_weight: 클래스 가중치
+        n_trials: 튜닝 시도 횟수
+        
+    Returns:
+        dict: 최적 파라미터
+    """
+    if not OPTUNA_AVAILABLE:
+        print("\\n[오류] Optuna가 설치되지 않았습니다.")
+        print("설치: pip install optuna")
+        return None
+        
+    print("\\n" + "=" * 60)
+    print("Optuna 하이퍼파라미터 튜닝")
+    print("=" * 60)
+    print(f"\\n모델: XGBoost")
+    print(f"시도 횟수: {n_trials}회")
+    print(f"최적화 지표: 5-Fold CV F1 Score")
+    
+    # Optuna 로깅 레벨 조정
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    
+    def objective(trial):
+        params = {
+            "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+            "max_depth": trial.suggest_int("max_depth", 2, 10),
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+            "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
+            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+            "gamma": trial.suggest_float("gamma", 0, 5),
+            "reg_alpha": trial.suggest_float("reg_alpha", 0, 2),
+            "reg_lambda": trial.suggest_float("reg_lambda", 0, 2),
+            "scale_pos_weight": scale_pos_weight,
+            "random_state": 42,
+            "eval_metric": "logloss",
+        }
+        
+        model = XGBClassifier(**params)
+        
+        # 5-Fold CV
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        scores = cross_val_score(model, X_train, y_train, cv=cv, scoring="f1")
+        
+        return scores.mean()
+    
+    # 튜닝 실행
+    sampler = TPESampler(seed=42)
+    study = optuna.create_study(direction="maximize", sampler=sampler)
+    
+    print("\\n튜닝 진행 중...")
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+    
+    print(f"\\n{'='*60}")
+    print("튜닝 결과")
+    print("=" * 60)
+    print(f"\\n최고 CV F1 Score: {study.best_value:.4f}")
+    print(f"\\n최적 파라미터:")
+    for key, value in study.best_params.items():
+        if isinstance(value, float):
+            print(f"  {key}: {value:.4f}")
+        else:
+            print(f"  {key}: {value}")
+    
+    # 최적 파라미터에 고정값 추가
+    best_params = study.best_params.copy()
+    best_params["scale_pos_weight"] = scale_pos_weight
+    best_params["random_state"] = 42
+    best_params["eval_metric"] = "logloss"
+    
+    return best_params
+
+
+def train_with_tuned_params(X_train, X_test, y_train, y_test, best_params, feature_cols, stadium_name):
+    """최적 파라미터로 모델 재학습 및 평가"""
+    print("\\n" + "=" * 60)
+    print(f"최적 파라미터로 재학습 - {stadium_name}")
+    print("=" * 60)
+    
+    # 최적 파라미터로 XGBoost 학습
+    model = XGBClassifier(**best_params)
+    model.fit(X_train, y_train)
+    
+    # 예측
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, 1]
+    
+    # 평가
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_prob) if sum(y_test) > 0 else 0.0
+    
+    print(f"\\n[Tuned XGBoost 결과]")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"F1 Score: {f1:.4f}")
+    print(f"ROC-AUC: {roc_auc:.4f}")
+    
+    print(f"\\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=["정상", "취소"]))
+    
+    print("Confusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
+    
+    # 교차 검증
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores = cross_val_score(model, pd.concat([X_train, X_test]), 
+                                 pd.concat([y_train, y_test]), cv=cv, scoring="f1")
+    print(f"\\n5-Fold CV F1: {cv_scores.mean():.4f} (+/- {cv_scores.std()*2:.4f})")
+    
+    return model, f1
+
+
+# ============================================
 # 5. 피처 중요도 분석
 # ============================================
 def analyze_feature_importance(model, feature_cols, model_name, stadium_id, stadium_name):
@@ -389,6 +604,7 @@ def create_prediction_function(model, feature_cols):
         daily_temp_mean=20,
         month=7,
         dayofweek=5,
+        game_hour=18,
     ):
         """
         우천취소 확률 예측
@@ -406,11 +622,24 @@ def create_prediction_function(model, feature_cols):
         daily_temp_mean: 평균 기온 (C)
         month: 월 (1-12)
         dayofweek: 요일 (0=월, 6=일)
+        game_hour: 경기 시작 시간 (0-23)
 
         Returns:
         --------
         dict: 예측 결과 (확률, 판정)
         """
+        # 파생 피처 자동 계산
+        is_weekend = 1 if dayofweek >= 5 else 0
+        is_rainy_season = 1 if month in [7, 8] else 0
+        precip_intensity = daily_precip_sum / max(daily_precip_hours, 1)
+        humidity_precip_interaction = pre_game_humidity * pre_game_precip / 100
+        cumulative_precip_2days = daily_precip_sum + prev_day_precip
+        ground_condition_score = (
+            prev_day_precip * 0.5 +
+            pre_game_precip * 0.3 +
+            (pre_game_humidity - 50) * 0.02
+        )
+
         input_data = pd.DataFrame(
             [
                 [
@@ -425,6 +654,14 @@ def create_prediction_function(model, feature_cols):
                     daily_temp_mean,
                     month,
                     dayofweek,
+                    # 신규 파생 피처
+                    is_weekend,
+                    is_rainy_season,
+                    game_hour,
+                    precip_intensity,
+                    humidity_precip_interaction,
+                    cumulative_precip_2days,
+                    ground_condition_score,
                 ]
             ],
             columns=feature_cols,
@@ -469,14 +706,26 @@ def save_model(model, feature_cols, stadium_id, stadium_name):
 # ============================================
 # 구장별 모델 학습
 # ============================================
-def train_stadium_model(stadium_id):
-    """특정 구장의 모델 학습"""
+def train_stadium_model(stadium_id, temporal_split=False, tune=False, n_trials=50):
+    """
+    특정 구장의 모델 학습
+    
+    Args:
+        stadium_id: 구장 ID
+        temporal_split: True면 2025년 데이터를 테스트셋으로 사용
+        tune: True면 Optuna로 하이퍼파라미터 튜닝
+        n_trials: 튜닝 시도 횟수
+    """
     stadium_config = get_stadium_config(stadium_id)
     stadium_name = stadium_config["name"]
     paths = get_data_paths(stadium_id)
 
     print("\n" + "=" * 60)
     print(f"KBO {stadium_name} 우천취소 예측 모델")
+    if temporal_split:
+        print("[Temporal Validation] 2019-2024 학습, 2025 테스트")
+    if tune:
+        print(f"[Optuna Tuning] {n_trials}회 시도")
     print("=" * 60)
 
     # 데이터 파일 확인
@@ -496,6 +745,10 @@ def train_stadium_model(stadium_id):
 
     # 3. 전처리
     X, y, feature_cols = preprocess_data(df, stadium_name)
+    
+    # 날짜 시리즈 추출 (temporal split 용)
+    df_model = df[df["reason"].isin(["우천취소", "정상진행"])].copy()
+    df_dates = df_model["date"]
 
     # 취소 경기 수 확인
     if sum(y) < 5:
@@ -503,17 +756,54 @@ def train_stadium_model(stadium_id):
         return None
 
     # 4. 모델 학습
-    results, best_model, best_model_name, X_test, y_test = train_and_evaluate(
-        X, y, feature_cols, stadium_name
-    )
+    if tune:
+        # Optuna 튜닝 플로우
+        # 데이터 분할 먼저 수행
+        if temporal_split and df_dates is not None:
+            years = pd.to_datetime(df_dates).dt.year
+            train_mask = years < 2025
+            test_mask = years >= 2025
+            X_train, X_test = X[train_mask], X[test_mask]
+            y_train, y_test = y[train_mask], y[test_mask]
+        else:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=y
+            )
+        
+        # 클래스 가중치 계산
+        n_neg = len(y_train[y_train == 0])
+        n_pos = len(y_train[y_train == 1])
+        scale_pos_weight = n_neg / n_pos
+        
+        # Optuna 튜닝
+        best_params = tune_with_optuna(X_train, y_train, scale_pos_weight, n_trials=n_trials)
+        
+        if best_params is None:
+            return None
+        
+        # 최적 파라미터로 재학습
+        best_model, best_f1 = train_with_tuned_params(
+            X_train, X_test, y_train, y_test, best_params, feature_cols, stadium_name
+        )
+        best_model_name = "Tuned_XGBoost"
+        
+        # 5. 피처 중요도
+        feat_imp = analyze_feature_importance(
+            best_model, feature_cols, best_model_name, stadium_id, stadium_name
+        )
+    else:
+        # 기존 플로우
+        results, best_model, best_model_name, X_test, y_test = train_and_evaluate(
+            X, y, feature_cols, stadium_name, df_dates=df_dates, temporal_split=temporal_split
+        )
 
-    if best_model is None:
-        return None
+        if best_model is None:
+            return None
 
-    # 5. 피처 중요도
-    feat_imp = analyze_feature_importance(
-        best_model, feature_cols, best_model_name, stadium_id, stadium_name
-    )
+        # 5. 피처 중요도
+        feat_imp = analyze_feature_importance(
+            best_model, feature_cols, best_model_name, stadium_id, stadium_name
+        )
 
     # 6. 예측 함수 생성
     predict_fn = create_prediction_function(best_model, feature_cols)
@@ -547,7 +837,7 @@ def train_stadium_model(stadium_id):
         "feature_cols": feature_cols,
         "predict_fn": predict_fn,
         "model_path": model_path,
-        "results": results,
+        "best_model_name": best_model_name,
     }
 
 
@@ -635,6 +925,23 @@ def main():
         action="store_true",
         help="지원 구장 목록 출력",
     )
+    parser.add_argument(
+        "--temporal",
+        "-t",
+        action="store_true",
+        help="Temporal Validation (2019-2024 학습, 2025 테스트)",
+    )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Optuna 하이퍼파라미터 튜닝 (pip install optuna 필요)",
+    )
+    parser.add_argument(
+        "--trials",
+        type=int,
+        default=50,
+        help="튜닝 시도 횟수 (기본값: 50)",
+    )
 
     args = parser.parse_args()
 
@@ -652,7 +959,7 @@ def main():
 
     # 특정 구장 학습
     stadium_id = args.stadium or DEFAULT_STADIUM
-    train_stadium_model(stadium_id)
+    train_stadium_model(stadium_id, temporal_split=args.temporal, tune=args.tune, n_trials=args.trials)
 
 
 if __name__ == "__main__":
